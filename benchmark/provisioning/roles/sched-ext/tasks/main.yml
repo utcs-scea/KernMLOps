@@ -1,0 +1,47 @@
+---
+# tasks file for sched-ext
+
+- name: Install apt packages to build sched-ext
+  become: true
+  ansible.builtin.apt:
+    pkg:
+      - pkg-config
+      - cargo
+      - gcc-multilib
+      - build-essential
+      - libssl-dev
+      - lld
+      - libelf-dev
+    update_cache: true
+    state: present
+
+
+- name: Download LLVM download script
+  ansible.builtin.get_url:
+    url: https://apt.llvm.org/llvm.sh
+    dest: /tmp/llvm.sh
+
+
+- name: Download clang 17
+  become: true
+  ansible.builtin.command: bash /tmp/llvm.sh 17
+
+
+- name: Link clang-17 to base name clang
+  become: true
+  ansible.builtin.file:
+    src: /bin/clang-17
+    path: /bin/clang
+    state: link
+
+
+- name: Remove install script
+  ansible.builtin.file:
+    path: /tmp/llvm.sh
+    state: absent
+
+
+- name: Clone sched-ext repo
+  ansible.builtin.git:
+    repo: https://github.com/sched-ext/scx.git
+    dest: scx

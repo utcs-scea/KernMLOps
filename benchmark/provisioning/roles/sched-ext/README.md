@@ -1,6 +1,6 @@
-# install-kernel
+# sched-ext
 
-Install a new linux kernel.
+Clone and setup sched-ext for development.
 
 ## Requirements
 
@@ -20,7 +20,7 @@ n/a
 ---
 - hosts: benchmark-kernel-build
   roles:
-    - install-kernel
+    - sched-ext
 ```
 
 ## License

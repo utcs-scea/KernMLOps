@@ -1,21 +1,59 @@
 ---
 # tasks file for install-kernel
 
-# From https://planeta.github.io/programming/kernel-development-setup-with-vagrant/
 
-# TODO(Patrick): Add symbolic links for these args
-# - name: Install kernel
-#   become: true
-#   ansible.posix.synchronize:
-#     src: kernel/boot/
-#     dest: /boot/
-#     checksum: true
-#   register: kernel
+- name: Install apt package to launch new linux kernel
+  become: true
+  ansible.builtin.apt:
+    pkg:
+      - kexec-tools
+    update_cache: true
+    state: present
+
+
+- name: Copy custom kernel over
+  become: true
+  ansible.builtin.copy:
+    src: kernel/bzImage
+    dest: /boot/custom-bzImage
+
+
+- name: Set new kernel
+  become: true
+  ansible.builtin.command: kexec -l /boot/custom-bzImage --reuse-cmdline --initrd /boot/initrd.img
+
 # - name: Install kernel headers
 #   become: true
 #   ansible.posix.synchronize:
-#     src: kernel/usr/include/
+#     src: kernel/include/
 #     dest: /usr/include/
+
+
+- name: Boot into new kernel
+  become: true
+  ansible.builtin.command: systemctl kexec
+  ignore_errors: true
+  async: 1
+  poll: 1
+
+
+- name: Wait for system to become reachable again
+  wait_for_connection:
+    delay: 5
+    timeout: 600
+
+
+- name: Get kernel version
+  command: uname -a
+  register: uname_result
+
+
+- name: Print kernel version
+  ansible.builtin.debug:
+    var: uname_result.stdout_lines
+
+
+# TODO(Patrick): Add symbolic links for these args
 # - name: Install kernel modules
 #   become: true
 #   ansible.posix.synchronize:
@@ -26,26 +64,3 @@
 # - name: Display modules result
 #   debug:
 #       var: modules.stdout_lines
-
-# - name: Update GRUB
-#   become: true
-#   command: update-grub
-#   when: kernel.changed or modules.changed
-#   register: grub
-# - name: Reboot
-#   become: true
-#   shell: /sbin/shutdown -r now 'Rebooting box to update system libs/kernel as needed'
-#   async: 1
-#   poll: 1
-#   ignore_errors: true
-#   when: grub.changed
-# - name: Wait for system to become reachable again
-#   wait_for_connection:
-#       delay: 1
-#       timeout: 60
-# - name: Verify new update (optional)
-#   command: uname -mrs
-#   register: uname_result
-# - name: Display new kernel version
-#   debug:
-#       var: uname_result.stdout_lines

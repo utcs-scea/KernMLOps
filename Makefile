@@ -6,16 +6,26 @@ GID ?= $(shell id -g)
 USER_PYTHON ?= $(shell readlink -nf $(shell which python))
 KERNEL_VERSION ?= $(shell uname -r)
 KERNEL_DEV_HEADERS_DIR ?= /usr/src/kernels/${KERNEL_VERSION}
+KERNEL_DEV_SPECIFIC_HEADERS_MOUNT ?=
 KERNEL_DEV_MODULES_DIR ?= /lib/modules/${KERNEL_VERSION}
 
 # Kernel dev header locations are different on red hat and ubuntu
 # First ensure the user has not overridden this field
 ifeq (${KERNEL_DEV_HEADERS_DIR}, /usr/src/kernels/${KERNEL_VERSION})
 	ifeq ("$(wildcard ${KERNEL_DEV_HEADERS_DIR})","")
-	    KERNEL_DEV_HEADERS_DIR = /usr/src/${KERNEL_VERSION}
+	    KERNEL_DEV_HEADERS_DIR = /usr/src/linux-headers-${KERNEL_VERSION}
 	endif
 endif
 
+# Ubuntu distributions have generic and specific headers that are needed
+# First ensure the user has not overridden this field
+ifeq (${KERNEL_DEV_SPECIFIC_HEADERS_MOUNT},)
+# Now check if the headers are the "generic" version
+	ifneq ("$(shell echo ${KERNEL_DEV_HEADERS_DIR} | grep generic)","")
+			KERNEL_DEV_SPECIFIC_HEADERS_DIR = /usr/src/linux-headers-$(shell echo "${KERNEL_VERSION}" | sed 's|\(.*\)-.*|\1|')
+			KERNEL_DEV_SPECIFIC_HEADERS_MOUNT = -v ${KERNEL_DEV_SPECIFIC_HEADERS_DIR}/:${KERNEL_DEV_SPECIFIC_HEADERS_DIR}
+	endif
+endif
 
 BASE_IMAGE_NAME ?= kernmlops
 BCC_IMAGE_NAME ?= ${BASE_IMAGE_NAME}-bcc
@@ -83,15 +93,16 @@ docker-image-dependencies:
 
 docker:
 	@if [ ! -d "${KERNEL_DEV_HEADERS_DIR}" ]; then \
-		echo "Kernel dev headers not installed" && exit 1; \
+		echo "Kernel dev headers not installed: ${KERNEL_DEV_HEADERS_DIR}" && exit 1; \
 	fi
 	@if [ ! -d "${KERNEL_DEV_MODULES_DIR}" ]; then \
-		echo "Kernel dev headers not installed" && exit 1; \
+		echo "Kernel dev headers not installed: ${KERNEL_DEV_MODULES_DIR}" && exit 1; \
 	fi
 	@docker --context ${CONTAINER_CONTEXT} run --rm \
 	-v ${SRC_DIR}/:${CONTAINER_SRC_DIR} \
 	-v ${KERNEL_DEV_HEADERS_DIR}/:${KERNEL_DEV_HEADERS_DIR} \
 	-v ${KERNEL_DEV_MODULES_DIR}/:${KERNEL_DEV_MODULES_DIR} \
+	${KERNEL_DEV_SPECIFIC_HEADERS_MOUNT} \
 	${KERNMLOPS_CONTAINER_MOUNTS} \
 	${KERNMLOPS_CONTAINER_ENV} \
 	${CONTAINER_CPUSET} \

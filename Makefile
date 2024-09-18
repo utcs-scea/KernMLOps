@@ -4,6 +4,8 @@ UNAME ?= $(shell whoami)
 UID ?= $(shell id -u)
 GID ?= $(shell id -g)
 USER_PYTHON ?= $(shell readlink -nf $(shell which python))
+KERNEL_DEV_HEADERS_DIR ?= /usr/src/kernels/$(shell uname -r)
+KERNEL_DEV_MODULES_DIR ?= /lib/modules/$(shell uname -r)
 
 BASE_IMAGE_NAME ?= kernmlops
 BCC_IMAGE_NAME ?= ${BASE_IMAGE_NAME}-bcc
@@ -66,9 +68,12 @@ docker-image-dependencies:
 	--file Dockerfile.dev \
 	--target bcc .
 
+# TODO(Patrick): add warning if kernel dev packages not installed
 docker:
 	@docker --context ${CONTAINER_CONTEXT} run --rm \
 	-v ${SRC_DIR}/:${CONTAINER_SRC_DIR} \
+	-v ${KERNEL_DEV_HEADERS_DIR}/:${KERNEL_DEV_HEADERS_DIR} \
+	-v ${KERNEL_DEV_MODULES_DIR}/:${KERNEL_DEV_MODULES_DIR} \
 	${KERNMLOPS_CONTAINER_MOUNTS} \
 	${KERNMLOPS_CONTAINER_ENV} \
 	${CONTAINER_CPUSET} \

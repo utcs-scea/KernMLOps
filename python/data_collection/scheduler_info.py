@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from time import sleep
 
+import polars as pl
 from bcc import BPF
 
 
@@ -25,8 +26,10 @@ bpf_text = bpf_text.replace('FILTER', '0')
 
 bpf = BPF(text = bpf_text)
 quanta_runtime_data = list[QuantaRuntimeData]()
-if not is_support_raw_tp:
-  raise NotImplementedError()
+
+# this would be nice but does not work with only capabilities: CAP_BPF,CAP_SYS_ADMIN
+#if not is_support_raw_tp:
+#  raise NotImplementedError()
 
 def print_event(cpu, quanta_runtime_perf_event, size):
   event = bpf["quanta_runtimes"].event(quanta_runtime_perf_event)
@@ -40,6 +43,7 @@ def print_event(cpu, quanta_runtime_perf_event, size):
   )
 
 bpf["quanta_runtimes"].open_perf_buffer(print_event)
+print("Quanta Runtimes BPF program loaded")
 
 exiting = 0
 while (1):
@@ -49,4 +53,5 @@ while (1):
     except KeyboardInterrupt:
         break
 
-print(len(quanta_runtime_data))
+sched_df = pl.DataFrame(quanta_runtime_data)
+print(sched_df)

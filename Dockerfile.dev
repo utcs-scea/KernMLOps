@@ -44,14 +44,18 @@ FROM ${BUILD_IMAGE} AS dev
 
 ARG IS_CI=true
 
-# Give python capabilities to load eBPF programs
-RUN setcap CAP_BPF,CAP_SYS_ADMIN,CAP_DAC_READ_SEARCH,CAP_SYS_RESOURCE,CAP_NET_ADMIN,CAP_SETPCAP=+eip /usr/bin/python3.10
-RUN ln -s /usr/bin/python3.10 /usr/bin/python
+RUN apt update -y \
+  &&  apt install -y \
+  vim \
+  pkg-config \
+  shfmt \
+  && apt clean
 
 RUN if [ "${IS_CI}" != "true" ] ; then \
   apt update -y \
     &&  apt install -y \
     vim \
+    zsh \
     && apt clean; fi
 
 ARG UNAME
@@ -71,8 +75,14 @@ RUN echo "export SRC_DIR=${SRC_DIR}" >> /home/${UNAME}/.profile
 RUN mkdir -p /home/${UNAME}/.local
 RUN echo "export PATH=$PATH:/home/pkenney/.local/bin" >> /home/${UNAME}/.profile
 
+WORKDIR /home/${UNAME}
 COPY --chown=${UNAME} requirements.txt /home/${UNAME}/requirements.txt
-RUN pip install --no-warn-script-location -r /home/${UNAME}/requirements.txt
+RUN pip install --user --no-warn-script-location -r /home/${UNAME}/requirements.txt
+
+# Give python capabilities to load eBPF programs
+USER root
+RUN setcap CAP_BPF,CAP_SYS_ADMIN,CAP_DAC_READ_SEARCH,CAP_SYS_RESOURCE,CAP_NET_ADMIN,CAP_SETPCAP=+eip /usr/bin/python3.10
+RUN ln -s /usr/bin/python3.10 /usr/bin/python
 
 USER ${UNAME}
 WORKDIR ${SRC_DIR}

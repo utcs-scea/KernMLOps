@@ -4,6 +4,18 @@ This repository serves as the mono-repo for the KernMLOps research project.
 
 Currently, it only contains scripts for data collection of kernel performance.
 
+Quick Setup:
+
+```shell
+make dependencies
+make hooks
+make docker-image
+# Ensure you have installed your kernel's development headers
+# On ubuntu: apt install linux-headers-$(uname -r)
+# On redhat: dnf install kernel-devel kernel-headers
+make collect
+```
+
 ## Tools
 
 ### [asdf](https://asdf-vm.com)

@@ -4,8 +4,18 @@ UNAME ?= $(shell whoami)
 UID ?= $(shell id -u)
 GID ?= $(shell id -g)
 USER_PYTHON ?= $(shell readlink -nf $(shell which python))
-KERNEL_DEV_HEADERS_DIR ?= /usr/src/kernels/$(shell uname -r)
-KERNEL_DEV_MODULES_DIR ?= /lib/modules/$(shell uname -r)
+KERNEL_VERSION ?= $(shell uname -r)
+KERNEL_DEV_HEADERS_DIR ?= /usr/src/kernels/${KERNEL_VERSION}
+KERNEL_DEV_MODULES_DIR ?= /lib/modules/${KERNEL_VERSION}
+
+# Kernel dev header locations are different on red hat and ubuntu
+# First ensure the user has not overridden this field
+ifeq (${KERNEL_DEV_HEADERS_DIR}, /usr/src/kernels/${KERNEL_VERSION})
+	ifeq ("$(wildcard ${KERNEL_DEV_HEADERS_DIR})","")
+	    KERNEL_DEV_HEADERS_DIR = /usr/src/${KERNEL_VERSION}
+	endif
+endif
+
 
 BASE_IMAGE_NAME ?= kernmlops
 BCC_IMAGE_NAME ?= ${BASE_IMAGE_NAME}-bcc
@@ -45,15 +55,17 @@ hooks:
 pre-commit:
 	@pre-commit run -a
 
+collect:
+	@${MAKE} -e CONTAINER_CMD="make collect-data" docker
+
 collect-data:
 	@python python/data_collection
 
 docker-image:
 	@${MAKE} docker-image-dependencies
-	@docker --context ${CONTAINER_CONTEXT} build \
+	docker --context ${CONTAINER_CONTEXT} build \
 	--build-arg BUILD_IMAGE=${BCC_IMAGE_NAME}:latest \
 	--build-arg SRC_DIR=${CONTAINER_SRC_DIR} \
-	--build-arg BUILD_DIR=${CONTAINER_BUILD_DIR} \
 	--build-arg UNAME=${UNAME} \
 	--build-arg IS_CI=false \
 	--build-arg UID=${UID} \
@@ -63,13 +75,19 @@ docker-image:
 	--target dev .
 
 docker-image-dependencies:
+	@mkdir -p data
 	docker --context ${CONTAINER_CONTEXT} build \
 	-t ${BCC_IMAGE_NAME}:latest \
 	--file Dockerfile.dev \
 	--target bcc .
 
-# TODO(Patrick): add warning if kernel dev packages not installed
 docker:
+	@if [ ! -d "${KERNEL_DEV_HEADERS_DIR}" ]; then \
+		echo "Kernel dev headers not installed" && exit 1; \
+	fi
+	@if [ ! -d "${KERNEL_DEV_MODULES_DIR}" ]; then \
+		echo "Kernel dev headers not installed" && exit 1; \
+	fi
 	@docker --context ${CONTAINER_CONTEXT} run --rm \
 	-v ${SRC_DIR}/:${CONTAINER_SRC_DIR} \
 	-v ${KERNEL_DEV_HEADERS_DIR}/:${KERNEL_DEV_HEADERS_DIR} \

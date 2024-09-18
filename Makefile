@@ -1,6 +1,26 @@
 SHELL := /bin/bash
 
+UNAME ?= $(shell whoami)
+UID ?= $(shell id -u)
+GID ?= $(shell id -g)
 USER_PYTHON ?= $(shell readlink -nf $(shell which python))
+
+BASE_IMAGE_NAME ?= kernmlops
+BCC_IMAGE_NAME ?= ${BASE_IMAGE_NAME}-bcc
+IMAGE_NAME ?= ${UNAME}-${BASE_IMAGE_NAME}
+SRC_DIR ?= $(shell pwd)
+VERSION ?= $(shell git log --pretty="%h" -1 Dockerfile.dev)
+
+CONTAINER_SRC_DIR ?= /KernMLOps
+CONTAINER_WORKDIR ?= ${CONTAINER_SRC_DIR}
+CONTAINER_CONTEXT ?= default
+CONTAINER_CMD ?= bash -l
+INTERACTIVE ?= i
+
+# Developer variables that should be set as env vars in startup files like .profile
+KERNMLOPS_CONTAINER_MOUNTS ?=
+KERNMLOPS_CONTAINER_ENV ?=
+
 
 dependencies: dependencies-asdf
 
@@ -25,6 +45,37 @@ pre-commit:
 
 collect-data:
 	@python python/data_collection
+
+docker-image:
+	@${MAKE} docker-image-dependencies
+	@docker --context ${CONTAINER_CONTEXT} build \
+	--build-arg BUILD_IMAGE=${BCC_IMAGE_NAME}:latest \
+	--build-arg SRC_DIR=${CONTAINER_SRC_DIR} \
+	--build-arg BUILD_DIR=${CONTAINER_BUILD_DIR} \
+	--build-arg UNAME=${UNAME} \
+	--build-arg IS_CI=false \
+	--build-arg UID=${UID} \
+	--build-arg GID=${GID} \
+	-t ${IMAGE_NAME}:${VERSION} \
+	--file Dockerfile.dev \
+	--target dev .
+
+docker-image-dependencies:
+	docker --context ${CONTAINER_CONTEXT} build \
+	-t ${BCC_IMAGE_NAME}:latest \
+	--file Dockerfile.dev \
+	--target bcc .
+
+docker:
+	@docker --context ${CONTAINER_CONTEXT} run --rm \
+	-v ${SRC_DIR}/:${CONTAINER_SRC_DIR} \
+	${KERNMLOPS_CONTAINER_MOUNTS} \
+	${KERNMLOPS_CONTAINER_ENV} \
+	${CONTAINER_CPUSET} \
+	--privileged \
+	--workdir=${CONTAINER_WORKDIR} ${CONTAINER_OPTS} -${INTERACTIVE}t \
+	${IMAGE_NAME}:${VERSION} \
+	${CONTAINER_CMD}
 
 lint:
 	ruff check

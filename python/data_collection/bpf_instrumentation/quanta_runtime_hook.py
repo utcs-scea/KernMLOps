@@ -11,6 +11,7 @@ from bpf_instrumentation.bpf_hook import BPFProgram
 class QuantaRuntimeData:
   cpu: int
   pid: int
+  tgid: int
   quanta_end_uptime_us: int
   quanta_run_length_us: int
 
@@ -58,6 +59,7 @@ class QuantaRuntimeBPFHook(BPFProgram):
       QuantaRuntimeData(
         cpu=cpu,
         pid=event.pid,
+        tgid=event.tgid,
         quanta_end_uptime_us=event.quanta_end_uptime_us,
         quanta_run_length_us=event.quanta_run_length_us,
       )

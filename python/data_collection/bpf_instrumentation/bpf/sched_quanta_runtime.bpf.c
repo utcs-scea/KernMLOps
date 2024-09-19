@@ -94,22 +94,25 @@ static __always_inline unsigned int pid_namespace(struct task_struct* task) {
 //  return trace_enqueue(p->tgid, p->pid);
 // }
 
+#if USE_TRACEPOINT
 RAW_TRACEPOINT_PROBE(sched_switch) {
   // TP_PROTO(bool preempt, struct task_struct *prev, struct task_struct *next)
   struct task_struct* prev = (struct task_struct*)ctx->args[1];
   struct task_struct* next = (struct task_struct*)ctx->args[2];
-  u32 pid, tgid;
+  u32 next_pid = next->pid;
+#else
+int trace_run(struct pt_regs* ctx, struct task_struct* prev) {
+  u32 next_pid = bpf_get_current_pid_tgid();
+#endif
 
   // ivcsw: treat next task like an enqueue event and store timestamp
-  u32 next_tgid = next->tgid;
-  u32 next_pid = next->pid;
   if (!(FILTER || next_pid == 0)) {
     u64 ts = bpf_ktime_get_ns();
     start.update(&next_pid, &ts);
   }
 
-  tgid = prev->tgid;
-  pid = prev->pid;
+  u32 tgid = prev->tgid;
+  u32 pid = prev->pid;
   if (FILTER || pid == 0)
     return 0;
   struct quanta_runtime_perf_event data;

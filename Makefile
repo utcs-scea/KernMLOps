@@ -36,6 +36,7 @@ VERSION ?= $(shell git log --pretty="%h" -1 Dockerfile.dev)
 CONTAINER_SRC_DIR ?= /KernMLOps
 CONTAINER_WORKDIR ?= ${CONTAINER_SRC_DIR}
 CONTAINER_CONTEXT ?= default
+CONTAINER_CPUSET ?=
 CONTAINER_CMD ?= bash -l
 INTERACTIVE ?= i
 

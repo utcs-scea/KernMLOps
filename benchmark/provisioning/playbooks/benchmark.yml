@@ -8,6 +8,10 @@
     # - run-data-collection
     # - build-kernel
 
+- hosts: development
+  roles:
+    - install-bcc
+
 - hosts: test
   roles:
     - clone-kernel

@@ -15,36 +15,15 @@
     capability: CAP_BPF,CAP_SYS_ADMIN,CAP_DAC_READ_SEARCH,CAP_SYS_RESOURCE,CAP_NET_ADMIN,CAP_SETPCAP+eip
     state: present
 
-- name: Install apt packages to build BCC tools
-  become: true
-  ansible.builtin.apt:
-    update_cache: true
-    pkg:
-      - zip
-      - bison
-      - build-essential
-      - cmake
-      - flex
-      - git
-      - libedit-dev
-      - libllvm18
-      - llvm-18-dev
-      - libcap2-bin
-      - libclang-18-dev
-      - python3
-      - python3-pip
-      - zlib1g-dev
-      - libelf-dev
-      - libfl-dev
-      - python3-setuptools
-      - liblzma-dev
-      - libdebuginfod-dev
-      - arping
-      - netperf
-      - iperf
-      - libpolly-18-dev
-      - "linux-headers-{{ ansible_kernel }}"
-    state: present
+# Install package dependencies
+- name: dnf install rocky 9 bcc dependencies
+  ansible.builtin.include_tasks:
+    file: rocky9.yml
+  when: ansible_facts['pkg_mgr'] == "dnf"
+- name: apt install Ubuntu 24.04 bcc dependencies
+  ansible.builtin.include_tasks:
+    file: ubuntu.yml
+  when: ansible_distribution == "Ubuntu"
 
 - name: Check BCC installed
   stat:
@@ -72,7 +51,7 @@
 - name: Initialize BCC cmake build
   become: true
   ansible.builtin.command:
-    cmd: cmake -DPYTHON_CMD=python3 ..
+    cmd: cmake  {{ bcc_cmake_args }} ..
     chdir: "{{ download_location }}/build"
   when: bcc_download.changed
 
@@ -82,11 +61,9 @@
     chdir: "{{ download_location }}/build"
     target: all
     jobs: "{{ ansible_facts['processor_nproc'] }}"
-  when: bcc_download.changed
 
 - name: Install BCC tools
   become: true
   community.general.make:
     chdir: "{{ download_location }}/build"
     target: install
-  when: bcc_download.changed

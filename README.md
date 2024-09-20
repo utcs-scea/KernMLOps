@@ -64,6 +64,11 @@ Verify proper installation with:
 import bcc
 ```
 
+### [vagrant](https://developer.hashicorp.com/vagrant/docs/installation)
+
+Vagrant is a tool for managing VMs simply across different backend like VirtualBox
+and libvirt, we recommend using libvirt.
+
 ## Dependencies
 
 ### Python

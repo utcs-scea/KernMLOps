@@ -86,7 +86,7 @@ docker-image:
 	--target dev .
 
 docker-image-dependencies:
-	@mkdir -p data
+	@mkdir -p data/curated
 	docker --context ${CONTAINER_CONTEXT} build \
 	-t ${BCC_IMAGE_NAME}:latest \
 	--file Dockerfile.dev \

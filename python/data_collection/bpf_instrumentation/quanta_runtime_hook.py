@@ -39,8 +39,8 @@ class QuantaRuntimeBPFHook(BPFProgram):
     # this would be nice but does not work with only capabilities: CAP_BPF,CAP_SYS_ADMIN
     self.bpf = BPF(text = self.bpf_text)
     if not self.is_support_raw_tp:
-      self.bpf.attach_kprobe(event_re=r'^finish_task_switch$|^finish_task_switch\.isra\.\d$',
-                      fn_name="trace_run")
+      self.bpf.attach_kprobe(event_re=rb'^finish_task_switch$|^finish_task_switch\.isra\.\d$',
+                      fn_name=b"trace_run")
     self.bpf["quanta_runtimes"].open_perf_buffer(self._event_handler)
     print("Quanta Runtimes BPF program loaded")
 

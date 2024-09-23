@@ -104,6 +104,7 @@ docker:
 	-v ${KERNEL_DEV_HEADERS_DIR}/:${KERNEL_DEV_HEADERS_DIR} \
 	-v ${KERNEL_DEV_MODULES_DIR}/:${KERNEL_DEV_MODULES_DIR} \
 	-v /sys/kernel/debug/:/sys/kernel/debug \
+	-v /sys/kernel/tracing/:/sys/kernel/tracing \
 	${KERNEL_DEV_SPECIFIC_HEADERS_MOUNT} \
 	${KERNMLOPS_CONTAINER_MOUNTS} \
 	${KERNMLOPS_CONTAINER_ENV} \
@@ -111,7 +112,7 @@ docker:
 	--privileged \
 	--workdir=${CONTAINER_WORKDIR} ${CONTAINER_OPTS} -${INTERACTIVE}t \
 	${IMAGE_NAME}:${VERSION} \
-	${CONTAINER_CMD}
+	${CONTAINER_CMD} || true
 
 lint:
 	ruff check

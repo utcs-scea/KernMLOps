@@ -31,7 +31,7 @@ BASE_IMAGE_NAME ?= kernmlops
 BCC_IMAGE_NAME ?= ${BASE_IMAGE_NAME}-bcc
 IMAGE_NAME ?= ${UNAME}-${BASE_IMAGE_NAME}
 SRC_DIR ?= $(shell pwd)
-VERSION ?= $(shell git log --pretty="%h" -1 Dockerfile.dev)
+VERSION ?= $(shell git log --pretty="%h" -1 Dockerfile.dev requirements.txt)
 
 CONTAINER_SRC_DIR ?= /KernMLOps
 CONTAINER_WORKDIR ?= ${CONTAINER_SRC_DIR}
@@ -70,7 +70,7 @@ collect:
 	@${MAKE} -e CONTAINER_CMD="make collect-data" docker
 
 collect-data:
-	@python python/data_collection
+	@python python/kernmlops collect -v
 
 docker-image:
 	@${MAKE} docker-image-dependencies

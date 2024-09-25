@@ -35,10 +35,14 @@ VERSION ?= $(shell git log --pretty="%h" -1 Dockerfile.dev requirements.txt)
 
 CONTAINER_SRC_DIR ?= /KernMLOps
 CONTAINER_WORKDIR ?= ${CONTAINER_SRC_DIR}
+CONTAINER_HOSTNAME ?= $(shell hostname)-docker
 CONTAINER_CONTEXT ?= default
 CONTAINER_CPUSET ?=
 CONTAINER_CMD ?= bash -l
 INTERACTIVE ?= i
+
+# Benchmarking variables
+USER_BENCHMARK_DIR ?= ~/kernmlops-benchmark
 
 # Developer variables that should be set as env vars in startup files like .profile
 KERNMLOPS_CONTAINER_MOUNTS ?=
@@ -71,6 +75,9 @@ collect:
 
 collect-data:
 	@python python/kernmlops collect -v
+
+dump:
+	@python python/kernmlops collect dump
 
 docker-image:
 	@${MAKE} docker-image-dependencies
@@ -110,6 +117,7 @@ docker:
 	${KERNMLOPS_CONTAINER_ENV} \
 	${CONTAINER_CPUSET} \
 	--privileged \
+	--hostname=${CONTAINER_HOSTNAME} \
 	--workdir=${CONTAINER_WORKDIR} ${CONTAINER_OPTS} -${INTERACTIVE}t \
 	${IMAGE_NAME}:${VERSION} \
 	${CONTAINER_CMD} || true

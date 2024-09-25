@@ -96,10 +96,16 @@ collect:
 	@${MAKE} -e CONTAINER_CMD="make benchmark-linux-build" docker
 
 collect-data:
-	@python python/kernmlops collect -v -p ${COLLECTION_POLL_RATE} --benchmark ${COLLECTION_BENCHMARK}
+	@python python/kernmlops collect -v \
+	-p ${COLLECTION_POLL_RATE} \
+	-d ${BENCHMARK_DIR} \
+	--benchmark ${COLLECTION_BENCHMARK}
 
 benchmark-linux-build:
-	@python python/kernmlops collect -v -p ${COLLECTION_POLL_RATE} --benchmark linux-build
+	@python python/kernmlops collect -v \
+	-p ${COLLECTION_POLL_RATE} \
+	-d ${BENCHMARK_DIR} \
+	--benchmark linux-build
 
 dump:
 	@python python/kernmlops collect dump
@@ -109,13 +115,13 @@ dump:
 provision-benchmarks:
 	@echo "[install-benchmarks]" > hosts
 	@echo "${PROVISIONING_TARGET}" >> hosts
-	@ansible-playbook benchmark/provisioning/site.yml -u ${PROVISIONING_USER} -i ./hosts \
+	@ansible-playbook benchmark/provisioning/site.yml -u ${PROVISIONING_USER} -i ./hosts -e benchmark_dir=${BENCHMARK_DIR} \
 	|| echo "Ensure that 'make provision-benchmarks-admin' has been run by your system administrator"
 
 provision-benchmarks-admin:
 	@echo "[install-benchmarks]" > hosts
 	@echo "${PROVISIONING_TARGET}" >> hosts
-	ansible-playbook benchmark/provisioning/site.yml -u ${PROVISIONING_USER} -i ./hosts -K
+	ansible-playbook benchmark/provisioning/site.yml -u ${PROVISIONING_USER} -i ./hosts -e benchmark_dir=${BENCHMARK_DIR} -K
 
 
 # Docker commands
@@ -155,6 +161,7 @@ docker:
 	-v ${KERNEL_DEV_HEADERS_DIR}/:${KERNEL_DEV_HEADERS_DIR} \
 	-v ${KERNEL_DEV_MODULES_DIR}/:${KERNEL_DEV_MODULES_DIR} \
 	-v ${BENCHMARK_DIR}/:/home/${UNAME}/kernmlops-benchmark \
+	-v ${BENCHMARK_DIR}/:${BENCHMARK_DIR} \
 	-v /sys/kernel/debug/:/sys/kernel/debug \
 	-v /sys/kernel/tracing/:/sys/kernel/tracing \
 	${KERNEL_DEV_SPECIFIC_HEADERS_MOUNT} \

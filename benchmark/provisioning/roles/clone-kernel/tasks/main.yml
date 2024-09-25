@@ -26,6 +26,8 @@
   register: linux_exists
 
 - name: Download Linux repo
+  retries: 3
+  delay: 3
   ansible.builtin.unarchive:
     creates: "{{ linux_source_dir }}"
     src: "https://git.kernel.org/torvalds/t/linux-{{ version }}.tar.gz"

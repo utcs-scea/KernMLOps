@@ -42,7 +42,7 @@
 
 - name: Create kernel build directory
   ansible.builtin.file:
-    path: "{{ user_benchmark_dir }}/kernel-build"
+    path: "{{ user_benchmark_dir }}/{{ linux_benchmark_name }}"
     state: directory
     mode: '0755'
 
@@ -51,4 +51,4 @@
     chdir: "{{ linux_source_dir }}"
     target: defconfig
     params:
-      O: "{{ user_benchmark_dir }}/kernel-build"
+      O: "{{ user_benchmark_dir }}/{{ linux_benchmark_name }}"

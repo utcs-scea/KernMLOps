@@ -82,7 +82,7 @@ def cli_collect_data(
         "benchmark_dir": benchmark_dir,
         "cpus": cpus,
     }
-    benchmark = benchmarks[benchmark_name](benchmark_args)  # pyright: ignore [reportCallIssue]
+    benchmark = benchmarks[benchmark_name](**benchmark_args)  # pyright: ignore [reportCallIssue]
     collect.run_collect(
         output_dir=output_dir,
         benchmark=benchmark,
@@ -101,9 +101,18 @@ def cli_collect_data(
     required=True,
     type=click.Path(exists=True, file_okay=False, path_type=Path),
 )
-def cli_collect_dump(input_dir: Path):
+@click.option(
+    "-b",
+    "--benchmark",
+    "benchmark_name",
+    default=None,
+    required=False,
+    help="Benchmark to filter by, default is to dump all data",
+    type=click.Choice(list(benchmarks.keys())),
+)
+def cli_collect_dump(input_dir: Path, benchmark_name: str | None):
     """Debug tool to dump collected data."""
-    kernmlops_dfs = data_import.read_parquet_dir(input_dir)
+    kernmlops_dfs = data_import.read_parquet_dir(input_dir, benchmark_name=benchmark_name)
     for name, kernmlops_df in kernmlops_dfs.items():
         print(f"{name}: {kernmlops_df}")
 

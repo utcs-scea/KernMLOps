@@ -2,6 +2,7 @@
 # defaults file for clone-kernel
 
 version: "6.11-rc7"
+linux_benchmark_name: "linux-build"
 benchmark_dir: "kernmlops-benchmark"
 linux_source_dir: "/opt/{{ benchmark_dir }}/linux-kernel"
 user_benchmark_dir: "{{ ansible_facts['env']['HOME'] }}/{{ benchmark_dir }}"

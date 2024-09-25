@@ -1,3 +1,4 @@
+from datetime import datetime
 from pathlib import Path
 from time import sleep
 
@@ -32,7 +33,7 @@ def run_collect(
     verbose: bool
 ):
     if not benchmark.is_configured():
-        raise BenchmarkNotConfiguredError()
+        raise BenchmarkNotConfiguredError(f"benchmark {benchmark.name()} is not configured")
 
     system_info = data_collection.machine_info().to_polars()
     system_info = system_info.unnest(system_info.columns)
@@ -50,7 +51,10 @@ def run_collect(
     if verbose:
         print(f"Started benchmark {benchmark.name()}")
 
+    tick = datetime.now()
     poll_instrumentation(benchmark, bpf_programs, poll_rate=poll_rate)
+    if verbose:
+        print(f"Benchmark ran for {(datetime.now() - tick).total_seconds()}s")
 
     bpf_dfs = {
         bpf_program.name(): bpf_program.pop_data().with_columns(pl.lit(collection_id).alias("collection_id"))

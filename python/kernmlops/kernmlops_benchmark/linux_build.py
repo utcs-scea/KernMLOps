@@ -17,18 +17,25 @@ class LinuxBuildBenchmark(Benchmark):
         self.process: subprocess.Popen | None = None
 
     def is_configured(self) -> bool:
+        print(self.benchmark_dir)
         return self.benchmark_dir.is_dir()
 
     def setup(self) -> None:
         if self.process is not None:
             raise BenchmarkRunningError()
-        subprocess.check_call(["make", "-C", str(self.benchmark_dir), "clean"])
+        subprocess.check_call(
+            ["make", "-C", str(self.benchmark_dir), "clean"],
+            stdout=subprocess.DEVNULL,
+        )
 
     def run(self) -> None:
         if self.process is not None:
             raise BenchmarkRunningError()
         jobs = f"-j{self.cpus}" if self.cpus else "-j"
-        self.process = subprocess.Popen(["make", "-C", str(self.benchmark_dir), jobs])
+        self.process = subprocess.Popen(
+            ["make", "-C", str(self.benchmark_dir), jobs],
+            stdout=subprocess.DEVNULL,
+        )
 
 
     def poll(self) -> bool:

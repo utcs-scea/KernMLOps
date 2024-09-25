@@ -42,6 +42,8 @@ CONTAINER_CMD ?= bash -l
 INTERACTIVE ?= i
 
 # Benchmarking variables
+COLLECTION_BENCHMARK ?= faux
+COLLECTION_POLL_RATE ?= .5
 USER_BENCHMARK_DIR ?= ~/kernmlops-benchmark
 
 # Developer variables that should be set as env vars in startup files like .profile
@@ -74,7 +76,10 @@ collect:
 	@${MAKE} -e CONTAINER_CMD="make collect-data" docker
 
 collect-data:
-	@python python/kernmlops collect -v
+	@python python/kernmlops collect -v -p ${COLLECTION_POLL_RATE} --benchmark ${COLLECTION_BENCHMARK}
+
+benchmark-linux-build:
+	@python python/kernmlops collect -v -p ${COLLECTION_POLL_RATE} --benchmark linux-build
 
 dump:
 	@python python/kernmlops collect dump

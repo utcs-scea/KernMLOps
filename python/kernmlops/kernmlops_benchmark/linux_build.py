@@ -38,10 +38,10 @@ class LinuxBuildBenchmark(Benchmark):
         )
 
 
-    def poll(self) -> bool:
+    def poll(self) -> int | None:
         if self.process is None:
             raise BenchmarkNotRunningError()
-        return self.process.poll() is None
+        return self.process.poll()
 
     def wait(self) -> None:
         if self.process is None:

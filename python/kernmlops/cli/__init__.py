@@ -56,7 +56,7 @@ def cli_collect():
     "-o",
     "--output-dir",
     "output_dir",
-    default=Path("data/curated"),
+    default=Path("data"),
     required=True,
     type=click.Path(exists=True, file_okay=False, path_type=Path),
 )
@@ -84,7 +84,7 @@ def cli_collect_data(
     }
     benchmark = benchmarks[benchmark_name](**benchmark_args)  # pyright: ignore [reportCallIssue]
     collect.run_collect(
-        output_dir=output_dir,
+        data_dir=output_dir,
         benchmark=benchmark,
         bpf_programs=bpf_programs,
         poll_rate=poll_rate,

@@ -3,9 +3,10 @@
 
 version: "6.11-rc7"
 linux_benchmark_name: "linux-build"
-benchmark_dir: "kernmlops-benchmark"
-linux_source_dir: "/opt/{{ benchmark_dir }}/linux-kernel"
-user_benchmark_dir: "{{ ansible_facts['env']['HOME'] }}/{{ benchmark_dir }}"
+benchmark_dir_name: "kernmlops-benchmark"
+benchmark_dir: "{{ ansible_facts['env']['HOME'] }}/{{ benchmark_dir_name }}"
+linux_source_dir: "{{ benchmark_dir }}/linux-kernel"
+linux_build_dir: "{{ benchmark_dir }}/{{ linux_benchmark_name }}"
 linux_kernel_apt_pkgs:
   - git
   - fakeroot

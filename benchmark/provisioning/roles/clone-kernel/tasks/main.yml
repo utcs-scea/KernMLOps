@@ -8,6 +8,7 @@
 - name: Gather apt package facts
   ansible.builtin.package_facts:
     manager: apt
+  when: ansible_facts['pkg_mgr'] == "apt"
 
 - name: Install apt packages to build linux kernel
   become: true
@@ -15,7 +16,14 @@
     update_cache: true
     pkg: "{{ linux_kernel_apt_pkgs }}"
     state: present
-  when: linux_kernel_apt_pkgs is not ansible.builtin.subset(ansible_facts.packages.keys() | list)
+  when:
+    - ansible_facts['pkg_mgr'] == "apt"
+    - linux_kernel_apt_pkgs is not ansible.builtin.subset(ansible_facts.packages.keys() | list)
+
+- name: Linux kernel downloaded
+  stat:
+    path: "{{ linux_source_dir }}"
+  register: linux_exists
 
 - name: Download Linux repo
   ansible.builtin.unarchive:
@@ -23,26 +31,23 @@
     src: "https://git.kernel.org/torvalds/t/linux-{{ version }}.tar.gz"
     dest: /tmp
     remote_src: true
-    owner: "{{ ansible_facts['env']['USER'] }}"
   register: linux_downloaded
+  when: not linux_exists.stat.exists
 
-- name: Rename Linux repo
-  become: true
-  ansible.builtin.command: mv "/tmp/linux-{{ version }}" "{{ linux_source_dir }}"
-  when: linux_downloaded.changed
-
-- name: Create kernel directory
-  become: true
+- name: Ensure benchmark directory exists
   ansible.builtin.file:
-    path: "{{ linux_source_dir }}"
+    path: "{{ benchmark_dir }}"
     state: directory
     mode: '0755'
-    owner: "{{ ansible_facts['env']['USER'] }}"
+  when: linux_downloaded.changed
+
+- name: Rename Linux repo
+  ansible.builtin.command: mv "/tmp/linux-{{ version }}" "{{ linux_source_dir }}"
   when: linux_downloaded.changed
 
 - name: Create kernel build directory
   ansible.builtin.file:
-    path: "{{ user_benchmark_dir }}/{{ linux_benchmark_name }}"
+    path: "{{ linux_build_dir }}"
     state: directory
     mode: '0755'
 
@@ -51,4 +56,4 @@
     chdir: "{{ linux_source_dir }}"
     target: defconfig
     params:
-      O: "{{ user_benchmark_dir }}/{{ linux_benchmark_name }}"
+      O: "{{ linux_build_dir }}"

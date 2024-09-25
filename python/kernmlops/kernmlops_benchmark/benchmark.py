@@ -2,6 +2,8 @@
 
 from typing_extensions import Protocol
 
+# TODO(Patrick): Add flush page-cache
+
 
 class Benchmark(Protocol):
   """Runnable benchmark that terminates naturally in finite time."""
@@ -17,8 +19,8 @@ class Benchmark(Protocol):
 
   def run(self) -> None: ...
 
-  def poll(self) -> bool:
-    """Returns True when benchmark has is running."""
+  def poll(self) -> int | None:
+    """Returns None when benchmark is running, nonzero when crashed."""
     ...
 
   def wait(self) -> None: ...
@@ -42,9 +44,9 @@ class FauxBenchmark(Benchmark):
   def run(self) -> None:
     pass
 
-  def poll(self) -> bool:
+  def poll(self) -> int | None:
     """This benchmark will never self terminate."""
-    return True
+    return None
 
   def wait(self) -> None:
     pass

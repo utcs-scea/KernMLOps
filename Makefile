@@ -107,6 +107,13 @@ benchmark-linux-build:
 	-d ${BENCHMARK_DIR} \
 	--benchmark linux-build
 
+benchmark-linux-build-baseline:
+	@python python/kernmlops collect -v \
+	-p ${COLLECTION_POLL_RATE} \
+	-d ${BENCHMARK_DIR} \
+	--no-hooks \
+	--benchmark linux-build
+
 dump:
 	@python python/kernmlops collect dump
 
@@ -123,6 +130,10 @@ provision-benchmarks-admin:
 	@echo "${PROVISIONING_TARGET}" >> hosts
 	ansible-playbook benchmark/provisioning/site.yml -u ${PROVISIONING_USER} -i ./hosts -e benchmark_dir=${BENCHMARK_DIR} -K
 
+provision-development:
+	@echo "[development]" > hosts
+	@echo "${PROVISIONING_TARGET}" >> hosts
+	ansible-playbook benchmark/provisioning/site.yml -u ${PROVISIONING_USER} -i ./hosts -K
 
 # Docker commands
 docker-image:

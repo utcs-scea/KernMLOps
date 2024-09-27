@@ -42,7 +42,7 @@ def run_collect(
     system_info = data_collection.machine_info().to_polars()
     system_info = system_info.unnest(system_info.columns)
     collection_id = system_info["collection_id"][0]
-    output_dir = data_dir / "curated"
+    output_dir = data_dir / "curated" if bpf_programs else data_dir / "baseline"
 
     benchmark.setup()
 
@@ -74,6 +74,7 @@ def run_collect(
         pl.lit(collection_time_sec).alias("collection_time_sec"),
         pl.lit(os.getpid()).alias("collection_pid"),
         pl.lit(benchmark.name()).alias("benchmark_name"),
+        pl.lit([hook.name() for hook in bpf_programs]).cast(pl.List(pl.String())).alias("hooks"),
     ])
     for bpf_name, bpf_df in bpf_dfs.items():
         if verbose:

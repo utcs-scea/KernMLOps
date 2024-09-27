@@ -182,7 +182,7 @@ class CollectionData:
                 if graph_dir:
                     plt.save_fig(
                         str(graph_dir / f"{graph.base_name().replace(" ", "_").lower()}.plt"),
-                        keep_colors=True
+                        keep_colors=True,
                     )
                 plt.clear_figure()
 

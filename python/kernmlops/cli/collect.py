@@ -59,6 +59,7 @@ def run_collect(
     tick = datetime.now()
     return_code = poll_instrumentation(benchmark, bpf_programs, poll_rate=poll_rate)
     collection_time_sec = (datetime.now() - tick).total_seconds()
+
     if verbose:
         print(f"Benchmark ran for {collection_time_sec}s")
     if return_code != 0:
@@ -72,6 +73,7 @@ def run_collect(
     bpf_dfs["system_info"] = system_info.with_columns([
         pl.lit(collection_time_sec).alias("collection_time_sec"),
         pl.lit(os.getpid()).alias("collection_pid"),
+        pl.lit(benchmark.name()).alias("benchmark_name"),
     ])
     for bpf_name, bpf_df in bpf_dfs.items():
         if verbose:

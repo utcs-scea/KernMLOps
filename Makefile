@@ -196,7 +196,7 @@ ensure-osquery:
 	fi
 
 kill-osquery:
-	@kill $(shell pgrep osquery | head -n 1)
+	@pgrep osquery | xargs -I % kill % >/dev/null
 
 set-capabilities:
 	sudo setcap CAP_BPF,CAP_SYS_ADMIN,CAP_DAC_READ_SEARCH,CAP_SYS_RESOURCE,CAP_NET_ADMIN,CAP_SETPCAP=+eip ${USER_PYTHON}

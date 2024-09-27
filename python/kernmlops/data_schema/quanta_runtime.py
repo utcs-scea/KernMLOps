@@ -1,3 +1,5 @@
+from typing import cast
+
 import plotext as plt
 import polars as pl
 
@@ -43,6 +45,21 @@ class QuantaRuntimeTable(CollectionTable):
 
     def graphs(self) -> list[type[CollectionGraph]]:
         return [QuantaRuntimeGraph]
+
+    def total_runtime_us(self) -> int:
+        """Returns the total amount of runtime recorded across all cpus."""
+        return self.filtered_table().select(
+            "quanta_run_length_us"
+        ).sum()["quanta_run_length_us"].to_list()[0]
+    def top_k_runtime(self, k: int) -> pl.DataFrame:
+        """Returns the pids and execution time of the k processes with the most execution time."""
+        return self.filtered_table().select(
+            ["pid", "quanta_run_length_us"]
+        ).group_by(
+            "pid"
+        ).sum().sort(
+            "quanta_run_length_us", descending=True
+        ).limit(k)
 
 
 class QuantaRuntimeGraph(CollectionGraph):
@@ -92,21 +109,31 @@ class QuantaRuntimeGraph(CollectionGraph):
             )
 
     def plot_trends(self) -> None:
-        quanta_df = self.collection_data.tables[
-            self._quanta_runtime_table_name()
-        ].filtered_table()
+        quanta_table = cast(
+            QuantaRuntimeTable,
+            self.collection_data.tables[
+                self._quanta_runtime_table_name()
+            ]
+        )
+        quanta_df = quanta_table.filtered_table()
         benchmark_start_time_sec = self.collection_data.benchmark_time_sec
-        pid = self.collection_data.pid
+        collector_pid = self.collection_data.pid
+        top_k = quanta_table.top_k_runtime(k=3)
+        print(top_k)
+        pids = top_k["pid"].to_list() + [collector_pid]
 
-        # Add trend of collector process to graph
-        collector_runtimes = quanta_df.filter(
-            pl.col("pid") == pid
-        )
-        plt.plot(
-            (
-                (collector_runtimes.select("quanta_end_uptime_us") / 1_000_000) - benchmark_start_time_sec
-            ).to_series().to_list(),
-            collector_runtimes.select("quanta_run_length_us").to_series().to_list(),
-            label="Collector Process",
-            marker="braille",
-        )
+        for pid in pids:
+            # Add trend of collector process to graph
+            collector_runtimes = quanta_df.filter(
+                pl.col("pid") == pid
+            )
+            plt.plot(
+                (
+                    (collector_runtimes.select("quanta_end_uptime_us") / 1_000_000) - benchmark_start_time_sec
+                ).to_series().to_list(),
+                collector_runtimes.select("quanta_run_length_us").to_series().to_list(),
+                label="Collector Process" if collector_pid == pid else f"PID: {pid}",
+                marker="braille",
+            )
+
+        print(f"Total processor time per cpu: {quanta_table.total_runtime_us() / 1_000_000.0 / self.collection_data.cpus }s")

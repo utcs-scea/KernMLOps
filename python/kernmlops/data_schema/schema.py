@@ -118,6 +118,12 @@ class SystemInfoTable(CollectionTable):
             "collection_time_sec"
         ][0]
 
+    @property
+    def cpus(self) -> int:
+        return self.table[
+            "cores"
+        ][0]
+
 
 class CollectionData:
 
@@ -163,6 +169,10 @@ class CollectionData:
     def benchmark_time_sec(self) -> int:
         return self.system_info.benchmark_time_sec
 
+    @property
+    def cpus(self) -> int:
+        return self.system_info.cpus
+
     def graph(self, out_dir: Path | None = None) -> None:
         # TODO(Patrick) use verbosity for filtering graphs
         graph_dir = out_dir / self.benchmark / self.id if out_dir else None
@@ -181,7 +191,7 @@ class CollectionData:
                 plt.show()
                 if graph_dir:
                     plt.save_fig(
-                        str(graph_dir / f"{graph.base_name().replace(" ", "_").lower()}.plt"),
+                        str(graph_dir / f"{graph.base_name().replace(' ', '_').lower()}.plt"),
                         keep_colors=True,
                     )
                 plt.clear_figure()

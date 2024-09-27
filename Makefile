@@ -190,6 +190,7 @@ docker:
 
 # Miscellaneous commands
 ensure-osquery:
+	@mkdir -p /home/${UNAME}/.osquery
 	@if [ ! -S "/home/${UNAME}/.osquery/osqueryd.sock" ]; then \
 		osqueryd --ephemeral --disable_logging --disable_database \
 		--extensions_socket /home/${UNAME}/.osquery/osqueryd.sock 2> /dev/null > /dev/null & \

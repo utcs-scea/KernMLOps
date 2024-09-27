@@ -167,9 +167,7 @@ docker:
 		echo "User benchmarks not installed: ${BENCHMARK_DIR}" \
 		&& echo "Try 'make provision-benchmarks'" && exit 1; \
 	fi
-	@if [ ! -S "/home/${UNAME}/.osquery/osqueryd.sock" ]; then \
-		${MAKE} start-osquery; \
-	fi
+	@${MAKE} ensure-osquery
 	@docker --context ${CONTAINER_CONTEXT} run --rm \
 	-v ${SRC_DIR}/:${CONTAINER_SRC_DIR} \
 	-v ${KERNEL_DEV_HEADERS_DIR}/:${KERNEL_DEV_HEADERS_DIR} \
@@ -191,9 +189,11 @@ docker:
 
 
 # Miscellaneous commands
-start-osquery:
-	@osqueryd --ephemeral --disable_logging --disable_database \
-    --extensions_socket /home/${UNAME}/.osquery/osqueryd.sock 2> /dev/null > /dev/null &
+ensure-osquery:
+	@if [ ! -S "/home/${UNAME}/.osquery/osqueryd.sock" ]; then \
+		osqueryd --ephemeral --disable_logging --disable_database \
+		--extensions_socket /home/${UNAME}/.osquery/osqueryd.sock 2> /dev/null > /dev/null & \
+	fi
 
 kill-osquery:
 	@kill $(shell pgrep osquery | head -n 1)

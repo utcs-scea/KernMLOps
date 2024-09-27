@@ -152,11 +152,13 @@ class QuantaRuntimeGraph(CollectionGraph):
             ],
         )
         process_data = process_table.by_pid(pids)
+        # TODO(Patrick): extract process-specific important args like file to compile for cc1
         process_pid_map = {
-            pid: name
-            for pid, name in zip(
+            pid: f"{name} {(cmdline + ' ').split(' ', maxsplit=1)[1]}"
+            for pid, name, cmdline in zip(
                 process_data["pid"].to_list(),
                 process_data["name"].to_list(),
+                process_data["cmdline"].to_list(),
                 strict=True
             )
         }

@@ -95,7 +95,7 @@ class SystemInfoTable(CollectionTable):
         ][0]
 
     @property
-    def pid(self) -> str:
+    def pid(self) -> int:
         return self.table[
             "collection_pid"
         ][0]
@@ -154,7 +154,7 @@ class CollectionData:
         return self.system_info.id
 
     @property
-    def pid(self) -> str:
+    def pid(self) -> int:
         return self.system_info.pid
 
     @property

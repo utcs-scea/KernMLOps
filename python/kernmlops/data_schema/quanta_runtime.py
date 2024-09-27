@@ -3,6 +3,7 @@ from typing import cast
 import plotext as plt
 import polars as pl
 
+from data_schema.process_metadata import ProcessMetadataTable
 from data_schema.schema import (
     CollectionData,
     CollectionGraph,
@@ -113,16 +114,15 @@ class QuantaRuntimeGraph(CollectionGraph):
             QuantaRuntimeTable,
             self.collection_data.tables[
                 self._quanta_runtime_table_name()
-            ]
+            ],
         )
         quanta_df = quanta_table.filtered_table()
         benchmark_start_time_sec = self.collection_data.benchmark_time_sec
         collector_pid = self.collection_data.pid
         top_k = quanta_table.top_k_runtime(k=3)
         print(top_k)
-        pids = top_k["pid"].to_list() + [collector_pid]
-
-        for pid in pids:
+        pid_labels: list[tuple[int, str]] = self._get_pid_labels(top_k["pid"].to_list() + [collector_pid], collector_pid)
+        for pid, label in pid_labels:
             # Add trend of collector process to graph
             collector_runtimes = quanta_df.filter(
                 pl.col("pid") == pid
@@ -132,8 +132,35 @@ class QuantaRuntimeGraph(CollectionGraph):
                     (collector_runtimes.select("quanta_end_uptime_us") / 1_000_000) - benchmark_start_time_sec
                 ).to_series().to_list(),
                 collector_runtimes.select("quanta_run_length_us").to_series().to_list(),
-                label="Collector Process" if collector_pid == pid else f"PID: {pid}",
+                label="Collector Process" if collector_pid == pid else label,
                 marker="braille",
             )
 
         print(f"Total processor time per cpu: {quanta_table.total_runtime_us() / 1_000_000.0 / self.collection_data.cpus }s")
+
+    def _get_pid_labels(self, pids: list[int], collector_pid: int | None = None) -> list[tuple[int, str]]:
+        if ProcessMetadataTable.name() not in self.collection_data.tables:
+            return [
+                (pid, "Collector Process" if collector_pid == pid else f"PID: {pid}")
+                for pid in pids
+            ]
+        # TODO(Patrick): Add get(TableType) to CollectorData to handle casting
+        process_table = cast(
+            ProcessMetadataTable,
+            self.collection_data.tables[
+                ProcessMetadataTable.name()
+            ],
+        )
+        process_data = process_table.by_pid(pids)
+        process_pid_map = {
+            pid: name
+            for pid, name in zip(
+                process_data["pid"].to_list(),
+                process_data["name"].to_list(),
+                strict=True
+            )
+        }
+        return [
+            (pid, process_pid_map[pid] if pid in process_pid_map else f"PID: {pid}")
+            for pid in pids
+        ]

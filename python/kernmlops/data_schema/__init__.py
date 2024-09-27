@@ -1,5 +1,6 @@
 """Library for maintaining, manipulating, and using schemas."""
 
+from data_schema.process_metadata import ProcessMetadataTable
 from data_schema.quanta_runtime import QuantaRuntimeTable
 from data_schema.schema import (
     CollectionData,
@@ -12,6 +13,7 @@ from data_schema.schema import (
 table_types = [
     SystemInfoTable,
     QuantaRuntimeTable,
+    ProcessMetadataTable,
 ]
 
 __all__ = [

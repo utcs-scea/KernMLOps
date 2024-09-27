@@ -81,3 +81,5 @@ def run_collect(
             print(f"{bpf_name}: {bpf_df}")
         Path(output_dir / bpf_name).mkdir(parents=True, exist_ok=True)
         bpf_df.write_parquet(output_dir / bpf_name / f"{collection_id}.{benchmark.name()}.parquet")
+    for hook in bpf_programs:
+        hook.plot(bpf_dfs, collection_id=collection_id)

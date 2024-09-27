@@ -97,3 +97,10 @@ class ProcessMetadataHook(BPFProgram):
     process_df = self.data()
     self.clear()
     return process_df
+
+  @classmethod
+  def plot(cls,
+    collections_dfs: Mapping[str, pl.DataFrame],
+    collection_id: str | None = None
+  ) -> None:
+    pass

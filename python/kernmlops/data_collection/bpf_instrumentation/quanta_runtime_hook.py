@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Mapping
 
+import plotext as plt
 import polars as pl
 from bcc import BPF
 
@@ -73,3 +75,46 @@ class QuantaRuntimeBPFHook(BPFProgram):
         quanta_run_length_us=event.quanta_run_length_us,
       )
     )
+
+  @classmethod
+  def plot(cls,
+    collections_dfs: Mapping[str, pl.DataFrame],
+    collection_id: str | None = None
+  ) -> None:
+    if cls.name() not in collections_dfs:
+      return
+
+    # TODO(Patrick): Make this function tolerate multiple collections
+    quanta_df = collections_dfs[cls.name()]
+    system_info_df = collections_dfs["system_info"]
+    if collection_id:
+      quanta_df = quanta_df.filter(
+        pl.col("collection_id") == collection_id
+      )
+      system_info_df = system_info_df.filter(
+        pl.col("collection_id") == collection_id
+      )
+    benchmark_start_time_sec = system_info_df.select("uptime_sec").to_series()[0]
+
+    # filter out invalid data points due to data loss
+    quanta_df = quanta_df.filter(
+      pl.col("quanta_run_length_us") < 5_000
+    )
+
+    # group by and plot by cpu
+    quanta_df_by_cpu = quanta_df.group_by("cpu")
+    for cpu, quanta_df_group in quanta_df_by_cpu:
+      plt.scatter(
+        (
+          (quanta_df_group.select("quanta_end_uptime_us") / 1_000_000) - benchmark_start_time_sec
+        ).to_series().to_list(),
+        quanta_df_group.select("quanta_run_length_us").to_series().to_list(),
+        label=f"CPU {cpu[0]}",
+      )
+    plt.title("Quanta Runtimes")
+    plt.xlabel("Benchmark Runtime (usec)")
+    plt.ylabel("Quanta Run Length (usec)")
+    plt.show()
+    graph_dir = Path(f"data/graphs/{collection_id}")
+    graph_dir.mkdir(parents=True, exist_ok=True)
+    plt.save_fig(str(graph_dir / f"{cls.name()}.plt"), keep_colors=True)

@@ -126,7 +126,6 @@ def cli_collect_dump(input_dir: Path, benchmark_name: str | None):
         print(f"{name}: {kernmlops_df}")
 
 
-
 def main():
     try:
         # TODO(Patrick): use logging

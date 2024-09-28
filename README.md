@@ -90,7 +90,8 @@ and libvirt, we recommend using libvirt.
 
 ### Python
 
-Python is required, version `3.12` is recommended for best compatibility.
+Python is required, at least version `3.12` is required for its generic typing support.
+This is the default version on Ubuntu 24.04.
 
 Python package dependencies are listed in `requirements.txt` and can be
 installed via `pip`.

@@ -189,6 +189,13 @@ docker:
 
 # Miscellaneous commands
 
+clean-docker-images:
+	docker --context ${CONTAINER_CONTEXT} image list \
+	--filter "label=creator=${UNAME}" \
+	--filter "label=project=KernMLOps" \
+	--format "table {{.Repository}}:{{.Tag}}" | tail -n +2 | uniq \
+	| xargs -I % docker --context ${CONTAINER_CONTEXT} rmi %
+
 set-capabilities:
 	sudo setcap CAP_BPF,CAP_SYS_ADMIN,CAP_DAC_READ_SEARCH,CAP_SYS_RESOURCE,CAP_NET_ADMIN,CAP_SETPCAP=+eip ${USER_PYTHON}
 

@@ -1,5 +1,5 @@
-ARG BUILD_IMAGE=ubuntu:22.04
-FROM ubuntu:22.04 AS bcc
+ARG BUILD_IMAGE=ubuntu:24.04
+FROM ubuntu:24.04 AS bcc
 
 USER root
 
@@ -116,3 +116,6 @@ RUN ln -s /usr/bin/python3.10 /usr/bin/python
 
 USER ${UNAME}
 WORKDIR ${SRC_DIR}
+
+LABEL creator="${UNAME}"
+LABEL project="KernMLOps"

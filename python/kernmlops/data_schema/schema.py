@@ -60,8 +60,8 @@ class CollectionTable(Protocol):
 
 
 # TODO(Patrick): Add simple class for holding tables from multiple collections
-#class CollectionsTable():
-#    pass
+class CollectionsTable[T: CollectionTable]:
+    pass
 
 
 class SystemInfoTable(CollectionTable):

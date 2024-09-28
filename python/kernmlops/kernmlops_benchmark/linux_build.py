@@ -26,6 +26,16 @@ class LinuxBuildBenchmark(Benchmark):
             ["make", "-C", str(self.benchmark_dir), "clean"],
             stdout=subprocess.DEVNULL,
         )
+        subprocess.check_call(
+            [
+                "make",
+                "-C",
+                str(self.benchmark_dir / "../linux-kernel"),
+                f"O={str(self.benchmark_dir)}",
+                "defconfig",
+            ],
+            stdout=subprocess.DEVNULL,
+        )
 
     def run(self) -> None:
         if self.process is not None:

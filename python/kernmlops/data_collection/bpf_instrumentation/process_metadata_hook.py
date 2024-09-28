@@ -3,6 +3,7 @@ from dataclasses import dataclass, fields
 from functools import cache
 from typing import Any, Mapping
 
+# TODO(Patrick): experiment without osquery
 import osquery
 import osquery.extensions
 import polars as pl

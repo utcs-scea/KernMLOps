@@ -31,6 +31,10 @@ make collect
 
 ## Tools
 
+### [Python-3.12]
+
+This is here to make the minimum python version blatant.
+
 ### [asdf](https://asdf-vm.com)
 
 Provides a declarative set of tools pinned to

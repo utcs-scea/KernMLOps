@@ -51,6 +51,7 @@ class QuantaRuntimeTable(CollectionTable):
         return self.filtered_table().select(
             "quanta_run_length_us"
         ).sum()["quanta_run_length_us"].to_list()[0]
+
     def top_k_runtime(self, k: int) -> pl.DataFrame:
         """Returns the pids and execution time of the k processes with the most execution time."""
         return self.filtered_table().select(
@@ -97,14 +98,14 @@ class QuantaRuntimeGraph(CollectionGraph):
 
     def plot(self) -> None:
         quanta_df = self._quanta_table.filtered_table()
-        benchmark_start_time_sec = self.collection_data.benchmark_time_sec
+        start_uptime_sec = self.collection_data.start_uptime_sec
 
         # group by and plot by cpu
         quanta_df_by_cpu = quanta_df.group_by("cpu")
         for cpu, quanta_df_group in quanta_df_by_cpu:
             plt.scatter(
                 (
-                    (quanta_df_group.select("quanta_end_uptime_us") / 1_000_000) - benchmark_start_time_sec
+                    (quanta_df_group.select("quanta_end_uptime_us") / 1_000_000.0) - start_uptime_sec
                 ).to_series().to_list(),
                 quanta_df_group.select("quanta_run_length_us").to_series().to_list(),
                 label=f"CPU {cpu[0]}",
@@ -113,7 +114,7 @@ class QuantaRuntimeGraph(CollectionGraph):
     def plot_trends(self) -> None:
         quanta_table = self._quanta_table
         quanta_df = quanta_table.filtered_table()
-        benchmark_start_time_sec = self.collection_data.benchmark_time_sec
+        start_uptime_sec = self.collection_data.start_uptime_sec
         collector_pid = self.collection_data.pid
         top_k = quanta_table.top_k_runtime(k=3)
         print(top_k)
@@ -125,7 +126,7 @@ class QuantaRuntimeGraph(CollectionGraph):
             )
             plt.plot(
                 (
-                    (collector_runtimes.select("quanta_end_uptime_us") / 1_000_000.0) - benchmark_start_time_sec
+                    (collector_runtimes.select("quanta_end_uptime_us") / 1_000_000.0) - start_uptime_sec
                 ).to_series().to_list(),
                 collector_runtimes.select("quanta_run_length_us").to_series().to_list(),
                 label="Collector Process" if collector_pid == pid else label,

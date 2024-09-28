@@ -23,8 +23,8 @@ make provision-benchmarks-admin
 # On redhat: dnf install kernel-devel kernel-headers
 # Or
 # For first time installation of tooling like kernel-headers, bcc-tools, osquery
-# This requires admin permissions
-make provision-development
+# This is optional if docker is present, requires admin permissions, do
+# make provision-development
 
 make collect
 ```

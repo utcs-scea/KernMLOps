@@ -1,4 +1,3 @@
-from typing import cast
 
 import plotext as plt
 import polars as pl
@@ -66,19 +65,26 @@ class QuantaRuntimeTable(CollectionTable):
 class QuantaRuntimeGraph(CollectionGraph):
 
     @classmethod
-    def with_collection(cls, collection_data: "CollectionData") -> "CollectionGraph":
-        return QuantaRuntimeGraph(collection_data=collection_data)
-
-    @classmethod
-    def _quanta_runtime_table_name(cls) -> str:
-        return QuantaRuntimeTable.name()
+    def with_collection(cls, collection_data: "CollectionData") -> "CollectionGraph | None":
+        quanta_table = collection_data.get(QuantaRuntimeTable)
+        if quanta_table is not None:
+            return QuantaRuntimeGraph(
+                collection_data=collection_data,
+                quanta_table=quanta_table
+            )
+        return None
 
     @classmethod
     def base_name(cls) -> str:
         return "Quanta Runtimes"
 
-    def __init__(self, collection_data: CollectionData):
+    def __init__(
+        self,
+        collection_data: CollectionData,
+        quanta_table: QuantaRuntimeTable,
+    ):
         self.collection_data = collection_data
+        self._quanta_table = quanta_table
 
     def name(self) -> str:
         return f"{self.base_name()} for Collection {self.collection_data.id}"
@@ -89,13 +95,8 @@ class QuantaRuntimeGraph(CollectionGraph):
     def y_axis(self) -> str:
         return "Quanta Run Length (usec)"
 
-    def valid(self) -> bool:
-        return self._quanta_runtime_table_name() in self.collection_data.tables
-
     def plot(self) -> None:
-        quanta_df = self.collection_data.tables[
-            self._quanta_runtime_table_name()
-        ].filtered_table()
+        quanta_df = self._quanta_table.filtered_table()
         benchmark_start_time_sec = self.collection_data.benchmark_time_sec
 
         # group by and plot by cpu
@@ -110,12 +111,7 @@ class QuantaRuntimeGraph(CollectionGraph):
             )
 
     def plot_trends(self) -> None:
-        quanta_table = cast(
-            QuantaRuntimeTable,
-            self.collection_data.tables[
-                self._quanta_runtime_table_name()
-            ],
-        )
+        quanta_table = self._quanta_table
         quanta_df = quanta_table.filtered_table()
         benchmark_start_time_sec = self.collection_data.benchmark_time_sec
         collector_pid = self.collection_data.pid
@@ -139,18 +135,13 @@ class QuantaRuntimeGraph(CollectionGraph):
         print(f"Total processor time per cpu: {quanta_table.total_runtime_us() / 1_000_000.0 / self.collection_data.cpus }s")
 
     def _get_pid_labels(self, pids: list[int], collector_pid: int | None = None) -> list[tuple[int, str]]:
-        if ProcessMetadataTable.name() not in self.collection_data.tables:
+        process_table = self.collection_data.get(ProcessMetadataTable)
+        if not process_table:
             return [
                 (pid, "Collector Process" if collector_pid == pid else f"PID: {pid}")
                 for pid in pids
             ]
-        # TODO(Patrick): Add get(TableType) to CollectorData to handle casting
-        process_table = cast(
-            ProcessMetadataTable,
-            self.collection_data.tables[
-                ProcessMetadataTable.name()
-            ],
-        )
+        assert process_table is not None
         process_data = process_table.by_pid(pids)
         # TODO(Patrick): extract process-specific important args like file to compile for cc1
         process_pid_map = {

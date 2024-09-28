@@ -1,7 +1,7 @@
 # Abstract definition of CollectionTable and logical collection
 
 from pathlib import Path
-from typing import Mapping
+from typing import Mapping, cast
 
 import plotext as plt
 import polars as pl
@@ -22,7 +22,7 @@ def _type_map(table_types: list[type["CollectionTable"]]) -> Mapping[str, type["
 class CollectionGraph(Protocol):
 
     @classmethod
-    def with_collection(cls, collection_data: "CollectionData") -> "CollectionGraph": ...
+    def with_collection(cls, collection_data: "CollectionData") -> "CollectionGraph | None": ...
 
     @classmethod
     def base_name(cls) -> str: ...
@@ -32,8 +32,6 @@ class CollectionGraph(Protocol):
     def x_axis(self) -> str: ...
 
     def y_axis(self) -> str: ...
-
-    def valid(self) -> bool: ...
 
     def plot(self) -> None: ...
 
@@ -134,15 +132,9 @@ class SystemInfoTable(CollectionTable):
 
 class CollectionData:
 
-    @classmethod
-    def collection_system_info_table_name(cls) -> str:
-        return SystemInfoTable.name()
-
     def __init__(self, collection_tables: Mapping[str, CollectionTable]):
         self._tables = collection_tables
-        system_info = self.tables.get(
-            self.collection_system_info_table_name(), None
-        )
+        system_info = self.get(SystemInfoTable)
         # TODO(Patrick): Add proper error handling
         assert isinstance(system_info, SystemInfoTable)
         assert len(system_info.table) == 1
@@ -180,6 +172,12 @@ class CollectionData:
     def cpus(self) -> int:
         return self.system_info.cpus
 
+    def get[T: CollectionTable](self, table_type: type[T]) -> T | None:
+        table = self.tables.get(table_type.name(), None)
+        if table:
+            return cast(T, table)
+        return None
+
     def graph(self, out_dir: Path | None = None) -> None:
         # TODO(Patrick) use verbosity for filtering graphs
         graph_dir = out_dir / self.benchmark / self.id if out_dir else None
@@ -188,7 +186,7 @@ class CollectionData:
         for _, collection_table in self.tables.items():
             for graph_type in collection_table.graphs():
                 graph = graph_type.with_collection(collection_data=self)
-                if not graph.valid():
+                if not graph:
                     continue
                 plt.title(graph.name())
                 plt.xlabel(graph.x_axis())

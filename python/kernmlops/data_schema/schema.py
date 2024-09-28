@@ -12,6 +12,13 @@ def collection_id_column() -> str:
     return "collection_id"
 
 
+def _type_map(table_types: list[type["CollectionTable"]]) -> Mapping[str, type["CollectionTable"]]:
+    return {
+        table_type.name(): table_type
+        for table_type in table_types
+    }
+
+
 class CollectionGraph(Protocol):
 
     @classmethod
@@ -202,17 +209,26 @@ class CollectionData:
             print(f"{name}: {table.table}")
 
     @classmethod
+    def from_tables(
+        cls,
+        tables: Mapping[str, pl.DataFrame],
+        table_types: list[type[CollectionTable]],
+    ) -> "CollectionData":
+        collection_tables = dict[str, CollectionTable]()
+        type_map = _type_map(table_types)
+        for name, table in tables.items():
+            collection_tables[name] = type_map[name].from_df(table)
+        return CollectionData(collection_tables)
+
+    @classmethod
     def from_data(
         cls,
         data_dir: Path,
         collection_id: str,
-        table_types: list[type[CollectionTable]]
+        table_types: list[type[CollectionTable]],
     ) -> "CollectionData":
         collection_tables = dict[str, CollectionTable]()
-        type_map: Mapping[str, type[CollectionTable]] = {
-            table_type.name(): table_type
-            for table_type in table_types
-        }
+        type_map = _type_map(table_types)
         dataframe_dirs = [
             x for x in data_dir.iterdir()
             if x.is_dir() and x.name in type_map

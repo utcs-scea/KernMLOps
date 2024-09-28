@@ -129,7 +129,7 @@ class QuantaRuntimeGraph(CollectionGraph):
             )
             plt.plot(
                 (
-                    (collector_runtimes.select("quanta_end_uptime_us") / 1_000_000) - benchmark_start_time_sec
+                    (collector_runtimes.select("quanta_end_uptime_us") / 1_000_000.0) - benchmark_start_time_sec
                 ).to_series().to_list(),
                 collector_runtimes.select("quanta_run_length_us").to_series().to_list(),
                 label="Collector Process" if collector_pid == pid else label,
@@ -154,7 +154,7 @@ class QuantaRuntimeGraph(CollectionGraph):
         process_data = process_table.by_pid(pids)
         # TODO(Patrick): extract process-specific important args like file to compile for cc1
         process_pid_map = {
-            pid: f"{name} {(cmdline + ' ').split(' ', maxsplit=1)[1]}"
+            pid: f"{name} {(cmdline + ' ').split(' ', maxsplit=1)[1][:25]}"
             for pid, name, cmdline in zip(
                 process_data["pid"].to_list(),
                 process_data["name"].to_list(),

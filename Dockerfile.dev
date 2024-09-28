@@ -39,6 +39,21 @@ RUN cmake -DPYTHON_CMD=python3 ..
 RUN make -j4
 RUN make install
 
+# Install OSQuery
+RUN apt update -y \
+  && apt install -y \
+  curl \
+  && apt clean
+RUN mkdir -p /etc/apt/keyrings
+RUN curl -fsSL  https://pkg.osquery.io/deb/pubkey.gpg | gpg --dearmor -o /etc/apt/keyrings/osquery.gpg
+RUN echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/osquery.gpg] https://pkg.osquery.io/deb deb main" \
+  | tee /etc/apt/sources.list.d/osquery.list > /dev/null
+RUN apt update -y \
+    && apt install -y \
+    osquery \
+    && apt clean
+RUN cp /opt/osquery/share/osquery/osquery.example.conf /etc/osquery/osquery.conf
+
 # benchmark dependencies
 RUN apt update -y \
     && apt install -y \

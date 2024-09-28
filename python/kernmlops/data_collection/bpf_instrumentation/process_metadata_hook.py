@@ -1,7 +1,6 @@
 import os
 from dataclasses import dataclass, fields
 from functools import cache
-from pathlib import Path
 from typing import Any, Mapping
 
 import osquery
@@ -29,10 +28,6 @@ class ProcessMetadataHook(BPFProgram):
     return "process_metadata"
 
   @classmethod
-  def expected_socket(cls) -> Path:
-    return Path.home() / ".osquery/osqueryd.sock"
-
-  @classmethod
   @cache
   def _select_columns(cls) -> list[str]:
     return [field.name for field in fields(ProcessMetadata)]
@@ -47,14 +42,9 @@ class ProcessMetadataHook(BPFProgram):
     self.process_metadata = list[Mapping[str, Any]]()
 
   def load(self):
-    if self.expected_socket().exists():
-      self.osquery_instance = osquery.ExtensionClient(str(self.expected_socket()))
-      self.osquery_instance.open()
-      self.osquery_client = self.osquery_instance.extension_client()
-    else:
-      self.osquery_instance = osquery.SpawnInstance()
-      self.osquery_instance.open()
-      self.osquery_client = self.osquery_instance.client
+    self.osquery_instance = osquery.SpawnInstance()
+    self.osquery_instance.open()
+    self.osquery_client = self.osquery_instance.client
 
     initial_processes_query = self.osquery_client.query(
       f"SELECT {self._query_select_columns()} FROM processes"
@@ -97,10 +87,3 @@ class ProcessMetadataHook(BPFProgram):
     process_df = self.data()
     self.clear()
     return process_df
-
-  @classmethod
-  def plot(cls,
-    collections_dfs: Mapping[str, pl.DataFrame],
-    collection_id: str | None = None
-  ) -> None:
-    pass

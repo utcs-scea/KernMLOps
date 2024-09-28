@@ -86,4 +86,4 @@ def run_collect(
         tables=bpf_dfs,
         table_types=data_schema.table_types,
     )
-    collection_data.graph()
+    collection_data.graph(out_dir=output_dir)

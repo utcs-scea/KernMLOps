@@ -93,7 +93,7 @@ format:
 
 # Python commands
 collect:
-	@${MAKE} -e CONTAINER_CMD="make collect-data" docker
+	@${MAKE} -e CONTAINER_CMD="make benchmark-linux-build" docker
 
 collect-data:
 	@python python/kernmlops collect -v \

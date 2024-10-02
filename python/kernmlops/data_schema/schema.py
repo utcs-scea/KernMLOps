@@ -50,6 +50,12 @@ class CollectionTable(Protocol):
     @classmethod
     def from_df(cls, table: pl.DataFrame) -> "CollectionTable": ...
 
+    @classmethod
+    def from_df_id(cls, table: pl.DataFrame, collection_id: str) -> "CollectionTable":
+        return cls.from_df(
+            table=table.with_columns(pl.lit(collection_id).alias(collection_id_column()))
+        )
+
     @property
     def table(self) -> pl.DataFrame: ...
 
@@ -212,6 +218,16 @@ class CollectionData:
 
     @classmethod
     def from_tables(
+        cls,
+        tables: list[CollectionTable],
+    ) -> "CollectionData":
+        return CollectionData({
+            collection_table.name(): collection_table
+            for collection_table in tables
+        })
+
+    @classmethod
+    def from_dfs(
         cls,
         tables: Mapping[str, pl.DataFrame],
         table_types: list[type[CollectionTable]],

@@ -197,10 +197,13 @@ clean-docker-images:
 	| xargs -I % docker --context ${CONTAINER_CONTEXT} rmi %
 
 set-capabilities:
-	sudo setcap CAP_BPF,CAP_SYS_ADMIN,CAP_DAC_READ_SEARCH,CAP_SYS_RESOURCE,CAP_NET_ADMIN,CAP_SETPCAP=+eip ${USER_PYTHON}
+	sudo setcap CAP_BPF,CAP_SYS_ADMIN,CAP_DAC_READ_SEARCH,CAP_SYS_RESOURCE,CAP_NET_ADMIN,CAP_SETPCAP,CAP_PERFMON=+eip ${USER_PYTHON}
 
 revoke-capabilities:
-	sudo setcap CAP_BPF,CAP_SYS_ADMIN,CAP_DAC_READ_SEARCH,CAP_SYS_RESOURCE,CAP_NET_ADMIN,CAP_SETPCAP=-eip ${USER_PYTHON}
+	sudo setcap CAP_BPF,CAP_SYS_ADMIN,CAP_DAC_READ_SEARCH,CAP_SYS_RESOURCE,CAP_NET_ADMIN,CAP_SETPCAP,CAP_PERFMON=-eip ${USER_PYTHON}
 
 vmlinux-header:
 	bpftool btf dump file /sys/kernel/btf/vmlinux format c > python/data_collection/bpf/vmlinux.h
+
+clear-page-cache:
+	sync && echo 3 > /proc/sys/vm/drop_caches

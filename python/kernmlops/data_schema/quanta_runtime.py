@@ -1,4 +1,7 @@
 
+import json
+from typing import Mapping
+
 import plotext as plt
 import polars as pl
 
@@ -33,6 +36,7 @@ class QuantaRuntimeTable(CollectionTable):
 
     def filtered_table(self) -> pl.DataFrame:
         # filter out invalid data points due to data loss
+        # these are probably due to hardware threads not running
         initial_datapoints = len(self.table)
         max_run_length = 60_000
         quanta_df = self.table.filter(
@@ -65,8 +69,9 @@ class QuantaRuntimeTable(CollectionTable):
 
     def top_k_runtime(self, k: int) -> pl.DataFrame:
         """Returns the pids and execution time of the k processes with the most execution time."""
+        # in kernel space thread id and pid meanings are swapped
         return self.filtered_table().select(
-            ["pid", "quanta_run_length_us"]
+            [pl.col("tgid").alias("pid"), "quanta_run_length_us"]
         ).group_by(
             "pid"
         ).sum().sort(
@@ -129,11 +134,12 @@ class QuantaRuntimeGraph(CollectionGraph):
         collector_pid = self.collection_data.pid
         top_k = quanta_table.top_k_runtime(k=3)
         print(top_k)
-        pid_labels: list[tuple[int, str]] = self._get_pid_labels(top_k["pid"].to_list() + [collector_pid], collector_pid)
-        for pid, label in pid_labels:
+        pid_labels: Mapping[int, str] = self._get_pid_labels(top_k["pid"].to_list() + [collector_pid], collector_pid)
+        print(json.dumps(pid_labels, indent=4))
+        for pid, label in pid_labels.items():
             # Add trend of collector process to graph
             collector_runtimes = quanta_df.filter(
-                pl.col("pid") == pid
+                pl.col("tgid") == pid
             )
             plt.plot(
                 (
@@ -145,13 +151,13 @@ class QuantaRuntimeGraph(CollectionGraph):
             )
         print(f"Total processor time per cpu:\n{quanta_table.per_cpu_total_runtime_sec()}")
 
-    def _get_pid_labels(self, pids: list[int], collector_pid: int | None = None) -> list[tuple[int, str]]:
+    def _get_pid_labels(self, pids: list[int], collector_pid: int | None = None) -> Mapping[int, str]:
         process_table = self.collection_data.get(ProcessMetadataTable)
         if not process_table:
-            return [
-                (pid, "Collector Process" if collector_pid == pid else f"PID: {pid}")
+            return {
+                pid: "Collector Process" if collector_pid == pid else f"PID: {pid}"
                 for pid in pids
-            ]
+            }
         assert process_table is not None
         process_data = process_table.by_pid(pids)
         # TODO(Patrick): extract process-specific important args like file to compile for cc1
@@ -164,7 +170,7 @@ class QuantaRuntimeGraph(CollectionGraph):
                 strict=True
             )
         }
-        return [
-            (pid, process_pid_map[pid] if pid in process_pid_map else f"PID: {pid}")
+        return {
+            pid: process_pid_map[pid] if pid in process_pid_map else f"PID: {pid}"
             for pid in pids
-        ]
+        }

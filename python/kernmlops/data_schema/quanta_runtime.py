@@ -274,7 +274,7 @@ class QuantaBlockedGraph(CollectionGraph):
         for cpu, quanta_df_group in quanta_df_by_cpu:
             plt.scatter(
                 (
-                    (quanta_df_group.select("quanta_blocked_time_us") / 1_000_000.0) - start_uptime_sec
+                    (quanta_df_group.select("quanta_end_uptime_us") / 1_000_000.0) - start_uptime_sec
                 ).to_series().to_list(),
                 quanta_df_group.select("quanta_blocked_time_us").to_series().to_list(),
                 label=f"CPU {cpu[0]}",
@@ -296,7 +296,7 @@ class QuantaBlockedGraph(CollectionGraph):
             )
             plt.plot(
                 (
-                    (collector_runtimes.select("quanta_blocked_time_us") / 1_000_000.0) - start_uptime_sec
+                    (collector_runtimes.select("quanta_end_uptime_us") / 1_000_000.0) - start_uptime_sec
                 ).to_series().to_list(),
                 collector_runtimes.select("quanta_blocked_time_us").to_series().to_list(),
                 label="Collector Process" if collector_pid == pid else label,

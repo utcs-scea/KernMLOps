@@ -79,19 +79,19 @@ class QuantaRuntimeTable(CollectionTable):
         ).limit(k)
 
 
-class QuantaBlockedTable(CollectionTable):
+class QuantaQueuedTable(CollectionTable):
 
     @classmethod
     def name(cls) -> str:
-        return "quanta_blocked_time"
+        return "quanta_Queued_time"
 
     @classmethod
     def schema(cls) -> pl.Schema:
         return pl.Schema()
 
     @classmethod
-    def from_df(cls, table: pl.DataFrame) -> "QuantaBlockedTable":
-        return QuantaBlockedTable(table=table)
+    def from_df(cls, table: pl.DataFrame) -> "QuantaQueuedTable":
+        return QuantaQueuedTable(table=table)
 
     def __init__(self, table: pl.DataFrame):
         self._table = table
@@ -104,34 +104,34 @@ class QuantaBlockedTable(CollectionTable):
         return self.table
 
     def graphs(self) -> list[type[CollectionGraph]]:
-        return [QuantaBlockedGraph]
+        return [QuantaQueuedGraph]
 
-    def total_blocked_time_us(self) -> int:
-        """Returns the total amount of blocked time recorded across all cpus."""
+    def total_Queued_time_us(self) -> int:
+        """Returns the total amount of Queued time recorded across all cpus."""
         return self.filtered_table().select(
-            "quanta_blocked_time_us"
-        ).sum()["quanta_blocked_time_us"].to_list()[0]
+            "quanta_queued_time_us"
+        ).sum()["quanta_queued_time_us"].to_list()[0]
 
     def per_cpu_total_runtime_sec(self) -> pl.DataFrame:
-        """Returns the total amount of blocked time recorded per cpu."""
+        """Returns the total amount of Queued time recorded per cpu."""
         return self.filtered_table().group_by(
             "cpu"
         ).agg(
-            pl.sum("quanta_blocked_time_us")
+            pl.sum("quanta_queued_time_us")
         ).select([
             "cpu",
-            (pl.col("quanta_blocked_time_us") / 1_000_000.0).alias("cpu_total_blocked_time_sec"),
-        ]).sort("cpu_total_blocked_time_sec")
+            (pl.col("quanta_queued_time_us") / 1_000_000.0).alias("cpu_total_Queued_time_sec"),
+        ]).sort("cpu_total_Queued_time_sec")
 
-    def top_k_blocked_time(self, k: int) -> pl.DataFrame:
-        """Returns the pids and execution time of the k processes with the most blocked time."""
+    def top_k_Queued_time(self, k: int) -> pl.DataFrame:
+        """Returns the pids and execution time of the k processes with the most Queued time."""
         # in kernel space thread id and pid meanings are swapped
         return self.filtered_table().select(
-            [pl.col("tgid").alias("pid"), "quanta_blocked_time_us"]
+            [pl.col("tgid").alias("pid"), "quanta_queued_time_us"]
         ).group_by(
             "pid"
         ).sum().sort(
-            "quanta_blocked_time_us", descending=True
+            "quanta_queued_time_us", descending=True
         ).limit(k)
 
 
@@ -202,7 +202,7 @@ class QuantaRuntimeGraph(CollectionGraph):
                     (collector_runtimes.select("quanta_end_uptime_us") / 1_000_000.0) - start_uptime_sec
                 ).to_series().to_list(),
                 collector_runtimes.select("quanta_run_length_us").to_series().to_list(),
-                label="Collector Process" if collector_pid == pid else label,
+                label="Collector Process" if collector_pid == pid else label[:35],
                 marker="braille",
             )
         print(f"Total processor time per cpu:\n{quanta_table.per_cpu_total_runtime_sec()}")
@@ -218,7 +218,7 @@ class QuantaRuntimeGraph(CollectionGraph):
         process_data = process_table.by_pid(pids)
         # TODO(Patrick): extract process-specific important args like file to compile for cc1
         process_pid_map = {
-            pid: f"{name} {(cmdline + ' ').split(' ', maxsplit=1)[1][:25]}"
+            pid: f"{name} {(cmdline + ' ').split(' ', maxsplit=1)[1]}"
             for pid, name, cmdline in zip(
                 process_data["pid"].to_list(),
                 process_data["name"].to_list(),
@@ -232,13 +232,13 @@ class QuantaRuntimeGraph(CollectionGraph):
         }
 
 
-class QuantaBlockedGraph(CollectionGraph):
+class QuantaQueuedGraph(CollectionGraph):
 
     @classmethod
     def with_collection(cls, collection_data: "CollectionData") -> "CollectionGraph | None":
-        quanta_table = collection_data.get(QuantaBlockedTable)
+        quanta_table = collection_data.get(QuantaQueuedTable)
         if quanta_table is not None:
-            return QuantaBlockedGraph(
+            return QuantaQueuedGraph(
                 collection_data=collection_data,
                 quanta_table=quanta_table
             )
@@ -246,12 +246,12 @@ class QuantaBlockedGraph(CollectionGraph):
 
     @classmethod
     def base_name(cls) -> str:
-        return "Quanta Blocked Time"
+        return "Quanta Queued Time"
 
     def __init__(
         self,
         collection_data: CollectionData,
-        quanta_table: QuantaBlockedTable,
+        quanta_table: QuantaQueuedTable,
     ):
         self.collection_data = collection_data
         self._quanta_table = quanta_table
@@ -263,7 +263,7 @@ class QuantaBlockedGraph(CollectionGraph):
         return "Benchmark Runtime (sec)"
 
     def y_axis(self) -> str:
-        return "Quanta Blocked Time (usec)"
+        return "Quanta Queued Time (usec)"
 
     def plot(self) -> None:
         quanta_df = self._quanta_table.filtered_table()
@@ -276,7 +276,7 @@ class QuantaBlockedGraph(CollectionGraph):
                 (
                     (quanta_df_group.select("quanta_end_uptime_us") / 1_000_000.0) - start_uptime_sec
                 ).to_series().to_list(),
-                quanta_df_group.select("quanta_blocked_time_us").to_series().to_list(),
+                quanta_df_group.select("quanta_queued_time_us").to_series().to_list(),
                 label=f"CPU {cpu[0]}",
             )
 
@@ -285,7 +285,7 @@ class QuantaBlockedGraph(CollectionGraph):
         quanta_df = quanta_table.filtered_table()
         start_uptime_sec = self.collection_data.start_uptime_sec
         collector_pid = self.collection_data.pid
-        top_k = quanta_table.top_k_blocked_time(k=3)
+        top_k = quanta_table.top_k_Queued_time(k=3)
         print(top_k)
         pid_labels: Mapping[int, str] = self._get_pid_labels(top_k["pid"].to_list() + [collector_pid], collector_pid)
         print(json.dumps(pid_labels, indent=4))
@@ -298,8 +298,8 @@ class QuantaBlockedGraph(CollectionGraph):
                 (
                     (collector_runtimes.select("quanta_end_uptime_us") / 1_000_000.0) - start_uptime_sec
                 ).to_series().to_list(),
-                collector_runtimes.select("quanta_blocked_time_us").to_series().to_list(),
-                label="Collector Process" if collector_pid == pid else label,
+                collector_runtimes.select("quanta_queued_time_us").to_series().to_list(),
+                label="Collector Process" if collector_pid == pid else label[:35],
                 marker="braille",
             )
         print(f"Total processor time per cpu:\n{quanta_table.per_cpu_total_runtime_sec()}")
@@ -315,7 +315,7 @@ class QuantaBlockedGraph(CollectionGraph):
         process_data = process_table.by_pid(pids)
         # TODO(Patrick): extract process-specific important args like file to compile for cc1
         process_pid_map = {
-            pid: f"{name} {(cmdline + ' ').split(' ', maxsplit=1)[1][:25]}"
+            pid: f"{name} {(cmdline + ' ').split(' ', maxsplit=1)[1]}"
             for pid, name, cmdline in zip(
                 process_data["pid"].to_list(),
                 process_data["name"].to_list(),

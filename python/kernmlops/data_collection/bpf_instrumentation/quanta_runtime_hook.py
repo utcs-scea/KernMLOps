@@ -4,10 +4,12 @@ from pathlib import Path
 import polars as pl
 from bcc import BPF
 from data_schema import CollectionTable
-from data_schema.quanta_runtime import QuantaBlockedTable, QuantaRuntimeTable
+from data_schema.quanta_runtime import QuantaQueuedTable, QuantaRuntimeTable
 
 from data_collection.bpf_instrumentation.bpf_hook import BPFProgram
 
+# Note: collecting blocked time is not useful since parent processes blocking on children
+# obfuscates the meaning
 
 @dataclass(frozen=True)
 class QuantaRuntimeData:
@@ -41,7 +43,6 @@ class QuantaRuntimeBPFHook(BPFProgram):
         bpf_text = bpf_text.replace('USE_TRACEPOINT', '0')
     self.quanta_runtime_data = list[QuantaRuntimeData]()
     self.quanta_queue_data = list[QuantaRuntimeData]()
-    self.quanta_blocked_data = list[QuantaRuntimeData]()
 
   def load(self, collection_id: str):
     self.collection_id = collection_id
@@ -54,7 +55,6 @@ class QuantaRuntimeBPFHook(BPFProgram):
         fn_name=b"trace_run"
       )
     self.bpf["quanta_runtimes"].open_perf_buffer(self._runtime_event_handler)
-    self.bpf["quanta_blocked_times"].open_perf_buffer(self._blocked_event_handler)
     self.bpf["quanta_queue_times"].open_perf_buffer(self._queue_event_handler)
 
   def poll(self):
@@ -66,9 +66,9 @@ class QuantaRuntimeBPFHook(BPFProgram):
         pl.DataFrame(self.quanta_runtime_data),
         collection_id=self.collection_id,
       ),
-      QuantaBlockedTable.from_df_id(
-        pl.DataFrame(self.quanta_blocked_data).rename({
-          "quanta_run_length_us": "quanta_blocked_time_us",
+      QuantaQueuedTable.from_df_id(
+        pl.DataFrame(self.quanta_queue_data).rename({
+          "quanta_run_length_us": "quanta_queued_time_us",
         }),
         collection_id=self.collection_id,
       )
@@ -76,7 +76,6 @@ class QuantaRuntimeBPFHook(BPFProgram):
 
   def clear(self):
     self.quanta_runtime_data.clear()
-    self.quanta_blocked_data.clear()
     self.quanta_queue_data.clear()
 
   def pop_data(self) -> list[CollectionTable]:
@@ -87,18 +86,6 @@ class QuantaRuntimeBPFHook(BPFProgram):
   def _runtime_event_handler(self, cpu, quanta_runtime_perf_event, size):
     event = self.bpf["quanta_runtimes"].event(quanta_runtime_perf_event)
     self.quanta_runtime_data.append(
-      QuantaRuntimeData(
-        cpu=cpu,
-        pid=event.pid,
-        tgid=event.tgid,
-        quanta_end_uptime_us=event.quanta_end_uptime_us,
-        quanta_run_length_us=event.quanta_run_length_us,
-      )
-    )
-
-  def _blocked_event_handler(self, cpu, quanta_runtime_perf_event, size):
-    event = self.bpf["quanta_blocked_times"].event(quanta_runtime_perf_event)
-    self.quanta_blocked_data.append(
       QuantaRuntimeData(
         cpu=cpu,
         pid=event.pid,

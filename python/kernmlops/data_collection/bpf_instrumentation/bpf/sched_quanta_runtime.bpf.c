@@ -20,7 +20,6 @@ BPF_HASH(run_start, u32);
 BPF_HASH(queue_start, u32);
 BPF_PERF_OUTPUT(quanta_runtimes);
 BPF_PERF_OUTPUT(quanta_queue_times);
-BPF_PERF_OUTPUT(quanta_blocked_times);
 
 #if USE_TRACEPOINT
 RAW_TRACEPOINT_PROBE(sched_wakeup_new) {
@@ -47,26 +46,8 @@ int trace_ttwu_do_wakeup(struct pt_regs* ctx, struct rq* rq, struct task_struct*
   u32 pid = p->pid;
   if (FILTER || pid == 0)
     return 0;
-  u64 *tsp, delta;
-
-  // fetch timestamp and calculate delta
-  tsp = queue_start.lookup(&pid);
   // update queue time to now since initial time spent blocked
   queue_start.update(&pid, &ts);
-  if (tsp == 0) {
-    return 0; // missed enqueue
-  }
-  delta = ts - *tsp;
-
-  struct quanta_runtime_perf_event data;
-  __builtin_memset(&data, 0, sizeof(data));
-  data.pid = pid;
-  data.tgid = tgid;
-  // TODO(Patrick): avoid division and multiplication
-  data.quanta_end_uptime_us = ts / 1000;
-  data.quanta_run_length_us = delta / 1000;
-
-  quanta_blocked_times.perf_submit(ctx, &data, sizeof(data));
   return 0;
 }
 

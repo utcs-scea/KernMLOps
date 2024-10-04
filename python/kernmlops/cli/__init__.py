@@ -1,4 +1,3 @@
-import multiprocessing
 import sys
 from pathlib import Path
 
@@ -41,7 +40,7 @@ def cli_collect():
 @click.option(
     "--cpus",
     "cpus",
-    default=multiprocessing.cpu_count(),
+    default=None,
     required=False,
     type=int,
 )

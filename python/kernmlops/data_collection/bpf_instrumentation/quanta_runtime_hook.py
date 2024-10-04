@@ -48,10 +48,7 @@ class QuantaRuntimeBPFHook(BPFProgram):
     self.collection_id = collection_id
     self.bpf = BPF(text = self.bpf_text)
     if not self.is_support_raw_tp:
-      try:
-        self.bpf.attach_kprobe(event=b"ttwu_do_wakeup", fn_name=b"trace_ttwu_do_wakeup")
-      except Exception as _:
-        self.bpf.attach_kprobe(event=b"ttwu_do_activate", fn_name=b"trace_ttwu_do_wakeup")
+      self.bpf.attach_kprobe(event=b"ttwu_do_activate", fn_name=b"trace_ttwu_do_wakeup")
       self.bpf.attach_kprobe(event=b"wake_up_new_task", fn_name=b"trace_wake_up_new_task")
       self.bpf.attach_kprobe(
         event_re=rb'^finish_task_switch$|^finish_task_switch\.isra\.\d$',

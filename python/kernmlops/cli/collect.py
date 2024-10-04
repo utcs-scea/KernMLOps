@@ -6,6 +6,7 @@ from time import sleep
 import data_collection
 import data_schema
 import polars as pl
+from data_schema import demote
 from kernmlops_benchmark import Benchmark, BenchmarkNotConfiguredError
 
 
@@ -59,7 +60,9 @@ def run_collect(
     tick = datetime.now()
     return_code = poll_instrumentation(benchmark, bpf_programs, poll_rate=poll_rate)
     collection_time_sec = (datetime.now() - tick).total_seconds()
-
+    for bpf_program in bpf_programs:
+        bpf_program.close()
+    demote()()
     if verbose:
         print(f"Benchmark ran for {collection_time_sec}s")
     if return_code != 0:

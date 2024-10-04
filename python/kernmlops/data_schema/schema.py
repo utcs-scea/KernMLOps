@@ -5,6 +5,8 @@ from pathlib import Path
 from typing import Mapping, cast
 
 import plotext as plt
+
+# from matplotlib import pyplot as plt
 import polars as pl
 from typing_extensions import Protocol
 
@@ -185,7 +187,7 @@ class CollectionData:
             return cast(T, table)
         return None
 
-    def graph(self, out_dir: Path | None = None) -> None:
+    def graph(self, out_dir: Path | None = None, no_trends: bool = False) -> None:
         # TODO(Patrick) use verbosity for filtering graphs
         graph_dir = out_dir / self.benchmark / self.id if out_dir else None
         if graph_dir:
@@ -199,7 +201,9 @@ class CollectionData:
                 plt.xlabel(graph.x_axis())
                 plt.ylabel(graph.y_axis())
                 graph.plot()
-                graph.plot_trends()
+                if not no_trends:
+                    graph.plot_trends()
+                # plt.legend() # required for matplotlib
                 plt.show()
                 if graph_dir:
                     plt.save_fig(
@@ -208,8 +212,8 @@ class CollectionData:
                     )
                 plt.clear_figure()
 
-    def dump(self):
-        self.graph()
+    def dump(self, no_trends: bool = False):
+        self.graph(no_trends=no_trends)
         for name, table in self.tables.items():
             if name == SystemInfoTable.name():
                 print(f"{name}: {json.dumps(table.table.row(0, named=True), indent=4)}")

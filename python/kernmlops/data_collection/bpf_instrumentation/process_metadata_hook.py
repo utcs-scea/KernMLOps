@@ -1,4 +1,5 @@
 import os
+import signal
 from dataclasses import dataclass, fields
 from functools import cache
 from typing import Any, Mapping
@@ -68,6 +69,10 @@ class ProcessMetadataHook(BPFProgram):
     assert new_processes_query.status.code == 0
     assert isinstance(new_processes_query.response, list)
     self.process_metadata.extend(new_processes_query.response)
+
+  def close(self):
+    self.osquery_instance.instance.send_signal(signal.SIGINT)  # pyright: ignore [reportOptionalMemberAccess]
+    self.osquery_instance.instance.wait()  # pyright: ignore [reportOptionalMemberAccess]
 
   def data(self) -> list[CollectionTable]:
     return [

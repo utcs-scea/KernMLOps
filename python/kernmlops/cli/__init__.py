@@ -145,14 +145,22 @@ def cli_collect_dump(input_dir: Path, benchmark_name: str | None):
     help="Collection id to filter by, can be a unique prefix",
     type=str,
 )
-def cli_collect_graph(input_dir: Path, collection_id: str):
+@click.option(
+    "--no-trends",
+    "no_trends",
+    default=False,
+    is_flag=True,
+    type=bool,
+    help="Omit trend lines from graphs",
+)
+def cli_collect_graph(input_dir: Path, collection_id: str, no_trends: bool):
     """Debug tool to graph collected data."""
     collection_data = data_schema.CollectionData.from_data(
         data_dir=input_dir,
         collection_id=collection_id,
         table_types=data_schema.table_types,
     )
-    collection_data.dump()
+    collection_data.dump(no_trends=no_trends)
 
 
 def main():

@@ -26,7 +26,7 @@ class QuantaRuntimeBPFHook(BPFProgram):
     return "quanta_runtime"
 
   def __init__(self):
-    self.is_support_raw_tp = BPF.support_raw_tracepoint()
+    self.is_support_raw_tp = False #  BPF.support_raw_tracepoint()
     bpf_text = open(Path(__file__).parent / "bpf/sched_quanta_runtime.bpf.c", "r").read()
 
     # code substitutions
@@ -48,7 +48,10 @@ class QuantaRuntimeBPFHook(BPFProgram):
     self.collection_id = collection_id
     self.bpf = BPF(text = self.bpf_text)
     if not self.is_support_raw_tp:
-      self.bpf.attach_kprobe(event=b"ttwu_do_wakeup", fn_name=b"trace_ttwu_do_wakeup")
+      try:
+        self.bpf.attach_kprobe(event=b"ttwu_do_wakeup", fn_name=b"trace_ttwu_do_wakeup")
+      except Exception as _:
+        self.bpf.attach_kprobe(event=b"ttwu_do_activate", fn_name=b"trace_ttwu_do_wakeup")
       self.bpf.attach_kprobe(event=b"wake_up_new_task", fn_name=b"trace_wake_up_new_task")
       self.bpf.attach_kprobe(
         event_re=rb'^finish_task_switch$|^finish_task_switch\.isra\.\d$',
@@ -59,6 +62,9 @@ class QuantaRuntimeBPFHook(BPFProgram):
 
   def poll(self):
     self.bpf.perf_buffer_poll()
+
+  def close(self):
+    self.bpf.cleanup()
 
   def data(self) -> list[CollectionTable]:
     return [

@@ -81,6 +81,7 @@ int trace_run(struct pt_regs* ctx, struct task_struct* prev) {
       // TODO(Patrick): avoid division and multiplication
       data.quanta_end_uptime_us = ts / 1000;
       data.quanta_run_length_us = delta / 1000;
+      // TODO(Patrick): consider only submitting if greater than 10us or so
       quanta_queue_times.perf_submit(ctx, &data, sizeof(data));
       queue_start.delete(&next_pid);
     }

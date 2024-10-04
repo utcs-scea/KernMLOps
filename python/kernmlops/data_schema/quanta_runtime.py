@@ -3,6 +3,8 @@ import json
 from typing import Mapping
 
 import plotext as plt
+
+# from matplotlib import pyplot as plt
 import polars as pl
 
 from data_schema.process_metadata import ProcessMetadataTable
@@ -21,11 +23,18 @@ class QuantaRuntimeTable(CollectionTable):
 
     @classmethod
     def schema(cls) -> pl.Schema:
-        return pl.Schema()
+        return pl.Schema({
+            "cpu": pl.Int64(),
+            "pid": pl.Int64(),
+            "tgid": pl.Int64(),
+            "quanta_end_uptime_us": pl.Int64(),
+            "quanta_run_length_us": pl.Int64(),
+            "collection_id": pl.String(),
+        })
 
     @classmethod
     def from_df(cls, table: pl.DataFrame) -> "QuantaRuntimeTable":
-        return QuantaRuntimeTable(table=table)
+        return QuantaRuntimeTable(table=table.cast(cls.schema(), strict=True))  # pyright: ignore [reportArgumentType]
 
     def __init__(self, table: pl.DataFrame):
         self._table = table
@@ -83,15 +92,22 @@ class QuantaQueuedTable(CollectionTable):
 
     @classmethod
     def name(cls) -> str:
-        return "quanta_Queued_time"
+        return "quanta_queued_time"
 
     @classmethod
     def schema(cls) -> pl.Schema:
-        return pl.Schema()
+        return pl.Schema({
+            "cpu": pl.Int64(),
+            "pid": pl.Int64(),
+            "tgid": pl.Int64(),
+            "quanta_end_uptime_us": pl.Int64(),
+            "quanta_queued_time_us": pl.Int64(),
+            "collection_id": pl.String(),
+        })
 
     @classmethod
     def from_df(cls, table: pl.DataFrame) -> "QuantaQueuedTable":
-        return QuantaQueuedTable(table=table)
+        return QuantaQueuedTable(table=table.cast(cls.schema(), strict=True))  # pyright: ignore [reportArgumentType]
 
     def __init__(self, table: pl.DataFrame):
         self._table = table
@@ -106,8 +122,8 @@ class QuantaQueuedTable(CollectionTable):
     def graphs(self) -> list[type[CollectionGraph]]:
         return [QuantaQueuedGraph]
 
-    def total_Queued_time_us(self) -> int:
-        """Returns the total amount of Queued time recorded across all cpus."""
+    def total_queued_time_us(self) -> int:
+        """Returns the total amount of queued time recorded across all cpus."""
         return self.filtered_table().select(
             "quanta_queued_time_us"
         ).sum()["quanta_queued_time_us"].to_list()[0]
@@ -120,11 +136,11 @@ class QuantaQueuedTable(CollectionTable):
             pl.sum("quanta_queued_time_us")
         ).select([
             "cpu",
-            (pl.col("quanta_queued_time_us") / 1_000_000.0).alias("cpu_total_Queued_time_sec"),
-        ]).sort("cpu_total_Queued_time_sec")
+            (pl.col("quanta_queued_time_us") / 1_000_000.0).alias("cpu_total_queued_time_sec"),
+        ]).sort("cpu_total_queued_time_sec")
 
-    def top_k_Queued_time(self, k: int) -> pl.DataFrame:
-        """Returns the pids and execution time of the k processes with the most Queued time."""
+    def top_k_queued_time(self, k: int) -> pl.DataFrame:
+        """Returns the pids and execution time of the k processes with the most queued time."""
         # in kernel space thread id and pid meanings are swapped
         return self.filtered_table().select(
             [pl.col("tgid").alias("pid"), "quanta_queued_time_us"]
@@ -203,7 +219,6 @@ class QuantaRuntimeGraph(CollectionGraph):
                 ).to_series().to_list(),
                 collector_runtimes.select("quanta_run_length_us").to_series().to_list(),
                 label="Collector Process" if collector_pid == pid else label[:35],
-                marker="braille",
             )
         print(f"Total processor time per cpu:\n{quanta_table.per_cpu_total_runtime_sec()}")
 
@@ -285,7 +300,7 @@ class QuantaQueuedGraph(CollectionGraph):
         quanta_df = quanta_table.filtered_table()
         start_uptime_sec = self.collection_data.start_uptime_sec
         collector_pid = self.collection_data.pid
-        top_k = quanta_table.top_k_Queued_time(k=3)
+        top_k = quanta_table.top_k_queued_time(k=3)
         print(top_k)
         pid_labels: Mapping[int, str] = self._get_pid_labels(top_k["pid"].to_list() + [collector_pid], collector_pid)
         print(json.dumps(pid_labels, indent=4))

@@ -1,8 +1,9 @@
 from dataclasses import dataclass
 from pathlib import Path
 
+import polars as pl
 from bcc import BPF
-from data_schema import CollectionTable
+from data_schema import CollectionTable, FileDataTable
 
 from data_collection.bpf_instrumentation.bpf_hook import BPFProgram
 
@@ -42,7 +43,7 @@ class FileDataBPFHook(BPFProgram):
         bpf_text = bpf_text.replace('TRACE_CREATE_3', '0')
     # pid from userspace point of view is thread group from kernel pov
     # bpf_text = bpf_text.replace('FILTER', 'tgid != %s' % args.pid)
-    self.bpf_text = bpf_text.replace('FILTER', '')
+    self.bpf_text = bpf_text.replace('FILTER', '0')
     self.file_open_data = list[FileOpenData]()
 
   def load(self, collection_id: str):
@@ -61,16 +62,15 @@ class FileDataBPFHook(BPFProgram):
     self.bpf.cleanup()
 
   def data(self) -> list[CollectionTable]:
-    print(f"File open events: {len(self.file_open_data)}")
-    count = 0
-    for i in self.file_open_data:
-       if i.file_size_bytes > 0:
-          count += 1
-    print(count)
-    return []
+    return [
+      FileDataTable.from_df_id(
+        pl.DataFrame(self.file_open_data),
+        collection_id=self.collection_id,
+      ),
+    ]
 
   def clear(self):
-    pass
+    self.file_open_data.clear()
 
   def pop_data(self) -> list[CollectionTable]:
     file_tables = self.data()
@@ -86,8 +86,7 @@ class FileDataBPFHook(BPFProgram):
         ts_uptime_us=event.ts_uptime_us,
         file_inode=event.file_inode,
         file_size_bytes=event.file_size_bytes,
-        file_name=str(event.file_name),
+        file_name=event.file_name.decode('utf-8'),
     )
-    if data.file_size_bytes > 0:
-        print(data)
+    print(data)
     self.file_open_data.append(data)

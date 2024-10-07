@@ -20,7 +20,7 @@ def hooks() -> list[BPFProgram]:
     return [
         ProcessMetadataHook(),
         FileDataBPFHook(),
-        #QuantaRuntimeBPFHook(),
+        QuantaRuntimeBPFHook(),
     ]
 
 

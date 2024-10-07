@@ -4,6 +4,7 @@ import os
 from pwd import getpwnam
 from typing import Callable
 
+from data_schema.file_data import FileDataTable
 from data_schema.process_metadata import ProcessMetadataTable
 from data_schema.quanta_runtime import QuantaQueuedTable, QuantaRuntimeTable
 from data_schema.schema import (
@@ -19,6 +20,7 @@ table_types = [
     QuantaRuntimeTable,
     QuantaQueuedTable,
     ProcessMetadataTable,
+    FileDataTable,
 ]
 
 def demote(user_id: int | None = None, group_id: int | None = None) -> Callable[[], None]:

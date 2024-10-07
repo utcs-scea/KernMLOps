@@ -43,6 +43,7 @@ def cli_collect():
     default=None,
     required=False,
     type=int,
+    help="Used to scale workloads, defaults to number physical cores",
 )
 @click.option(
     "-v",

@@ -56,7 +56,6 @@ class LinuxBuildBenchmark(Benchmark):
             stdout=subprocess.DEVNULL,
         )
 
-
     def poll(self) -> int | None:
         if self.process is None:
             raise BenchmarkNotRunningError()

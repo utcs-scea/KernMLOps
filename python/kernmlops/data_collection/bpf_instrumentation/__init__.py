@@ -3,6 +3,7 @@
 from functools import cache
 
 from data_collection.bpf_instrumentation.bpf_hook import BPFProgram
+from data_collection.bpf_instrumentation.file_data_hook import FileDataBPFHook
 from data_collection.bpf_instrumentation.process_metadata_hook import (
     ProcessMetadataHook,
 )
@@ -18,7 +19,8 @@ all_hooks = [
 def hooks() -> list[BPFProgram]:
     return [
         ProcessMetadataHook(),
-        QuantaRuntimeBPFHook(),
+        FileDataBPFHook(),
+        #QuantaRuntimeBPFHook(),
     ]
 
 

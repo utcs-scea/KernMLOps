@@ -30,10 +30,7 @@ static int probe_dentry(struct pt_regs* ctx, struct dentry* dentry) {
   data.ts_uptime_us = ts / 1000;
   data.file_inode = dentry->d_inode->i_ino;
   data.file_size_bytes = dentry->d_inode->i_size;
-
-  struct qstr pathname;
-  bpf_probe_read(&pathname, DNAME_INLINE_LEN, (const void*)&dentry->d_iname);
-  bpf_probe_read_str(&data.file_name, DNAME_INLINE_LEN, (const void*)&pathname.name);
+  bpf_probe_read(&data.file_name, DNAME_INLINE_LEN, (const void*)&dentry->d_iname);
 
   file_open_events.perf_submit(ctx, &data, sizeof(data));
 

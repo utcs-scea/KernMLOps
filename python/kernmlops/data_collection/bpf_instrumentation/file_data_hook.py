@@ -53,7 +53,7 @@ class FileDataBPFHook(BPFProgram):
     self.bpf.attach_kprobe(event=b"vfs_open", fn_name=b"trace_open")
     if BPF.get_kprobe_functions(b"security_inode_create"):
         self.bpf.attach_kprobe(event=b"security_inode_create", fn_name=b"trace_security_inode_create")
-    self.bpf["file_open_events"].open_perf_buffer(self._file_open_event_handler)
+    self.bpf["file_open_events"].open_perf_buffer(self._file_open_event_handler, page_cnt=64)
 
   def poll(self):
     self.bpf.perf_buffer_poll()
@@ -79,14 +79,16 @@ class FileDataBPFHook(BPFProgram):
 
   def _file_open_event_handler(self, cpu, file_open_perf_event, size):
     event = self.bpf["file_open_events"].event(file_open_perf_event)
-    data = FileOpenData(
-        cpu=cpu,
-        pid=event.pid,
-        tgid=event.tgid,
-        ts_uptime_us=event.ts_uptime_us,
-        file_inode=event.file_inode,
-        file_size_bytes=event.file_size_bytes,
-        file_name=event.file_name.decode('utf-8'),
-    )
-    print(data)
-    self.file_open_data.append(data)
+    try:
+        data = FileOpenData(
+            cpu=cpu,
+            pid=event.pid,
+            tgid=event.tgid,
+            ts_uptime_us=event.ts_uptime_us,
+            file_inode=event.file_inode,
+            file_size_bytes=event.file_size_bytes,
+            file_name=event.file_name.decode('utf-8'),
+        )
+        self.file_open_data.append(data)
+    except Exception as _:
+       pass

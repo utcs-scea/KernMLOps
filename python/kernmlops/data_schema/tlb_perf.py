@@ -1,9 +1,12 @@
 # from matplotlib import pyplot as plt
+import plotext as plt
 import polars as pl
 
 from data_schema.schema import (
+    CollectionData,
     CollectionGraph,
     CollectionTable,
+    cumulative_pma_as_pdf,
 )
 
 
@@ -41,11 +44,11 @@ class TLBPerfTable(CollectionTable):
         return self.table
 
     def graphs(self) -> list[type[CollectionGraph]]:
-        return []
+        return [TLBPerfGraph]
 
     # the raw data is a cumulative representation, this returns the deltas
     def as_pdf(self) -> pl.DataFrame:
-        by_cpu_dtlb_dfs = self.filtered_table().select([
+        dtlb_df = self.filtered_table().select([
             "cpu",
             "ts_uptime_us",
             "cumulative_tlb_misses",
@@ -55,34 +58,62 @@ class TLBPerfTable(CollectionTable):
             "itlb_event",
         ]).filter(
             pl.col("dtlb_event")
-        ).group_by("cpu")
-        by_cpu_dtlb_pdf_dfs = [
-            by_cpu_dtlb_df.lazy().sort("ts_uptime_us").with_columns(
-                pl.col("cumulative_tlb_misses").shift(1, fill_value=0).alias("cumulative_tlb_misses_shifted"),
-                pl.col("pmu_running_time_us").shift(1, fill_value=0).alias("pmu_running_time_us_shifted"),
-                pl.col("pmu_enabled_time_us").shift(1, fill_value=0).alias("pmu_enabled_time_us_shifted"),
-            ).with_columns(
-                (pl.col("cumulative_tlb_misses") - pl.col("cumulative_tlb_misses_shifted")).alias("tlb_misses_raw"),
-                (pl.col("pmu_running_time_us") - pl.col("pmu_running_time_us_shifted")).alias("span_duration_us"),
-            ).with_columns(
+        )
+        return cumulative_pma_as_pdf(
+            dtlb_df,
+            counter_column="cumulative_tlb_misses",
+            counter_column_rename="tlb_misses",
+        )
+
+
+class TLBPerfGraph(CollectionGraph):
+
+    @classmethod
+    def with_collection(cls, collection_data: "CollectionData") -> "CollectionGraph | None":
+        tlb_perf_table = collection_data.get(TLBPerfTable)
+        if tlb_perf_table is not None:
+            return TLBPerfGraph(
+                collection_data=collection_data,
+                tlb_perf_table=tlb_perf_table
+            )
+        return None
+
+    @classmethod
+    def base_name(cls) -> str:
+        return "TLB Performance"
+
+    def __init__(
+        self,
+        collection_data: CollectionData,
+        tlb_perf_table: TLBPerfTable,
+    ):
+        self.collection_data = collection_data
+        self._tlb_perf_table = tlb_perf_table
+
+    def name(self) -> str:
+        return f"{self.base_name()} for Collection {self.collection_data.id}"
+
+    def x_axis(self) -> str:
+        return "Benchmark Runtime (sec)"
+
+    def y_axis(self) -> str:
+        return "TLB Misses"
+
+    def plot(self) -> None:
+        dtlb_df = self._tlb_perf_table.as_pdf()
+        print(dtlb_df)
+        start_uptime_sec = self.collection_data.start_uptime_sec
+
+        # group by and plot by cpu
+        dtlb_df_by_cpu = dtlb_df.group_by("cpu")
+        for cpu, dtlb_df_group in dtlb_df_by_cpu:
+            plt.plot(
                 (
-                    (
-                        pl.col("span_duration_us")
-                    ) / (
-                        pl.col("pmu_enabled_time_us") - pl.col("pmu_enabled_time_us_shifted")
-                    )
-                ).alias("sampling_scaling"),
-            ).with_columns(
-                (pl.col("tlb_misses_raw") * pl.col("sampling_scaling")).alias("tlb_misses"),
-            ).select([
-                "cpu",
-                "ts_uptime_us",
-                "span_duration_us",
-                "tlb_misses",
-                "dtlb_event",
-                "itlb_event",
-            ])
-            for _, by_cpu_dtlb_df in by_cpu_dtlb_dfs
-        ]
-        dtlb_pdf_df = pl.concat(by_cpu_dtlb_pdf_dfs).collect()
-        return dtlb_pdf_df
+                    (dtlb_df_group.select("ts_uptime_us") / 1_000_000.0) - start_uptime_sec
+                ).to_series().to_list(),
+                dtlb_df_group.select("tlb_misses").to_series().to_list(),
+                label=f"CPU {cpu[0]}",
+            )
+
+    def plot_trends(self) -> None:
+        pass

@@ -13,6 +13,7 @@ from data_schema.schema import (
     CollectionTable,
     SystemInfoTable,
     collection_id_column,
+    cumulative_pma_as_pdf,
 )
 from data_schema.tlb_perf import TLBPerfTable
 
@@ -46,6 +47,7 @@ def demote(user_id: int | None = None, group_id: int | None = None) -> Callable[
 
 __all__ = [
     "collection_id_column",
+    "cumulative_pma_as_pdf",
     "demote",
     "table_types",
     "CollectionTable",

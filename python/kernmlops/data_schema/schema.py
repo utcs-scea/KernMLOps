@@ -265,3 +265,39 @@ class CollectionData:
             if dfs:
                 collection_tables[dataframe_dir.name] = type_map[dataframe_dir.name].from_df(dfs[0])
         return CollectionData(collection_tables)
+
+
+def cumulative_pma_as_pdf(table: pl.DataFrame, *, counter_column: str, counter_column_rename: str) -> pl.DataFrame:
+    cumulative_columns = [
+        counter_column,
+        "pmu_enabled_time_us",
+        "pmu_running_time_us",
+    ]
+    final_select = [
+        column
+        for column in table.columns
+        if column not in cumulative_columns
+    ]
+    final_select.extend([counter_column_rename, "span_duration_us"])
+    by_cpu_pdf_dfs = [
+        by_cpu_df.lazy().sort("ts_uptime_us").with_columns(
+            pl.col(counter_column).shift(1, fill_value=0).alias(f"{counter_column}_shifted"),
+            pl.col("pmu_running_time_us").shift(1, fill_value=0).alias("pmu_running_time_us_shifted"),
+            pl.col("pmu_enabled_time_us").shift(1, fill_value=0).alias("pmu_enabled_time_us_shifted"),
+        ).with_columns(
+            (pl.col(counter_column) - pl.col(f"{counter_column}_shifted")).alias(f"{counter_column_rename}_raw"),
+            (pl.col("pmu_running_time_us") - pl.col("pmu_running_time_us_shifted")).alias("span_duration_us"),
+        ).with_columns(
+            (
+                (
+                    pl.col("span_duration_us")
+                ) / (
+                    pl.col("pmu_enabled_time_us") - pl.col("pmu_enabled_time_us_shifted")
+                )
+            ).alias("sampling_scaling"),
+        ).with_columns(
+            (pl.col(f"{counter_column_rename}_raw") * pl.col("sampling_scaling")).alias(counter_column_rename),
+        ).select(final_select)
+        for _, by_cpu_df in table.group_by("cpu")
+    ]
+    return pl.concat(by_cpu_pdf_dfs).collect()

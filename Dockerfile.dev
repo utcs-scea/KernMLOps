@@ -46,6 +46,22 @@ RUN apt update -y \
     bison \
     && apt clean
 
+FROM ubuntu:24.04 AS libpfm
+# from https://github.com/powerapi-ng/hwpc-sensor/blob/master/Dockerfile
+
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt update && \
+    apt install -y build-essential git devscripts debhelper libncurses-dev python3 python3-pip swig && \
+    apt clean
+RUN ln -s /usr/bin/python3.12 /usr/bin/python && \
+    pip install setuptools --break-system-packages
+RUN git clone --single-branch --branch v4.13.0 https://github.com/wcohen/libpfm4.git /root/libpfm4
+ENV CONFIG_PFMLIB_NOPYTHON=n
+RUN cd /root/libpfm4 && \
+    make && \
+    ls python/build && \
+    debuild -i -us -uc -b -d
+
 # Base development image
 FROM ${BUILD_IMAGE} AS dev
 
@@ -72,6 +88,9 @@ RUN pip install \
   -r /root/requirements.txt
 RUN ln -s /usr/bin/python3.12 /usr/bin/python
 
+#COPY --from=libpfm /root/libpfm4*.deb /dependencies/
+#RUN dpkg -i /tmp/libpfm4_*.deb
+
 ARG UNAME
 ARG UID
 ARG GID
@@ -95,3 +114,13 @@ WORKDIR ${SRC_DIR}
 
 LABEL creator="${UNAME}"
 LABEL project="KernMLOps"
+
+
+RUN apt update && \
+    apt install -y build-essential git devscripts debhelper libncurses-dev python3 python3-pip swig && \
+    apt clean
+RUN pip install setuptools --break-system-packages
+RUN git clone --single-branch --branch v4.13.0 https://github.com/wcohen/libpfm4.git /root/libpfm4
+ENV CONFIG_PFMLIB_NOPYTHON=n
+RUN cd /root/libpfm4 && \
+    make

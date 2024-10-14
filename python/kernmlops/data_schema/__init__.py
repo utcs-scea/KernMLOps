@@ -14,6 +14,7 @@ from data_schema.schema import (
     SystemInfoTable,
     collection_id_column,
 )
+from data_schema.tlb_perf import TLBPerfTable
 
 table_types = [
     SystemInfoTable,
@@ -21,6 +22,7 @@ table_types = [
     QuantaQueuedTable,
     ProcessMetadataTable,
     FileDataTable,
+    TLBPerfTable,
 ]
 
 def demote(user_id: int | None = None, group_id: int | None = None) -> Callable[[], None]:

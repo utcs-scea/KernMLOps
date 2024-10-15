@@ -97,11 +97,11 @@ class TLBPerfGraph(CollectionGraph):
         return "Benchmark Runtime (sec)"
 
     def y_axis(self) -> str:
-        return "TLB Misses"
+        return "TLB Misses/msec"
 
     def plot(self) -> None:
         dtlb_df = self._tlb_perf_table.as_pdf()
-        print(dtlb_df)
+        # TODO(Patrick): fix tlb misses to scale by span time
         start_uptime_sec = self.collection_data.start_uptime_sec
 
         # group by and plot by cpu
@@ -111,7 +111,11 @@ class TLBPerfGraph(CollectionGraph):
                 (
                     (dtlb_df_group.select("ts_uptime_us") / 1_000_000.0) - start_uptime_sec
                 ).to_series().to_list(),
-                dtlb_df_group.select("tlb_misses").to_series().to_list(),
+                (
+                    dtlb_df_group.select("tlb_misses") / (
+                        dtlb_df_group.select("span_duration_us") / 1_000.0
+                    )
+                ).to_series().to_list(),
                 label=f"CPU {cpu[0]}",
             )
 

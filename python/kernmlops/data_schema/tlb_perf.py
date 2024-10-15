@@ -47,17 +47,19 @@ class TLBPerfTable(CollectionTable):
         return [TLBPerfGraph]
 
     # the raw data is a cumulative representation, this returns the deltas
-    def as_pdf(self) -> pl.DataFrame:
-        dtlb_df = self.filtered_table().select([
-            "cpu",
-            "ts_uptime_us",
-            "cumulative_tlb_misses",
-            "pmu_enabled_time_us",
-            "pmu_running_time_us",
-            "dtlb_event",
-            "itlb_event",
-        ]).filter(
+    def as_dtlb_pdf(self) -> pl.DataFrame:
+        dtlb_df = self.filtered_table().filter(
             pl.col("dtlb_event")
+        )
+        return cumulative_pma_as_pdf(
+            dtlb_df,
+            counter_column="cumulative_tlb_misses",
+            counter_column_rename="tlb_misses",
+        )
+
+    def as_itlb_pdf(self) -> pl.DataFrame:
+        dtlb_df = self.filtered_table().filter(
+            pl.col("itlb_event")
         )
         return cumulative_pma_as_pdf(
             dtlb_df,
@@ -100,24 +102,28 @@ class TLBPerfGraph(CollectionGraph):
         return "TLB Misses/msec"
 
     def plot(self) -> None:
-        dtlb_df = self._tlb_perf_table.as_pdf()
+        dtlb_df = self._tlb_perf_table.as_dtlb_pdf()
+        itlb_df = self._tlb_perf_table.as_itlb_pdf()
         # TODO(Patrick): fix tlb misses to scale by span time
         start_uptime_sec = self.collection_data.start_uptime_sec
 
         # group by and plot by cpu
-        dtlb_df_by_cpu = dtlb_df.group_by("cpu")
-        for cpu, dtlb_df_group in dtlb_df_by_cpu:
-            plt.plot(
-                (
-                    (dtlb_df_group.select("ts_uptime_us") / 1_000_000.0) - start_uptime_sec
-                ).to_series().to_list(),
-                (
-                    dtlb_df_group.select("tlb_misses") / (
-                        dtlb_df_group.select("span_duration_us") / 1_000.0
-                    )
-                ).to_series().to_list(),
-                label=f"CPU {cpu[0]}",
-            )
+        def plot_tlb(tlb_df: pl.DataFrame, *, tlb_type: str) -> None:
+            tlb_df_by_cpu = tlb_df.group_by("cpu")
+            for cpu, tlb_df_group in tlb_df_by_cpu:
+                plt.plot(
+                    (
+                        (tlb_df_group.select("ts_uptime_us") / 1_000_000.0) - start_uptime_sec
+                    ).to_series().to_list(),
+                    (
+                        tlb_df_group.select("tlb_misses") / (
+                            tlb_df_group.select("span_duration_us") / 1_000.0
+                        )
+                    ).to_series().to_list(),
+                    label=f"{tlb_type} CPU {cpu[0]}",
+                )
+        plot_tlb(dtlb_df, tlb_type="dTLB")
+        plot_tlb(itlb_df, tlb_type="iTLB")
 
     def plot_trends(self) -> None:
         pass

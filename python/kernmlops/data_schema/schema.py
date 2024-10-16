@@ -4,9 +4,6 @@ import json
 from pathlib import Path
 from typing import Mapping, cast
 
-import plotext as plt
-
-# from matplotlib import pyplot as plt
 import polars as pl
 from typing_extensions import Protocol
 
@@ -149,6 +146,9 @@ class CollectionData:
         assert len(system_info.table) == 1
         self._system_info = system_info
 
+        import plotext as plt
+        self._plt = plt
+
     @property
     def tables(self) -> Mapping[str, CollectionTable]:
         return self._tables
@@ -181,13 +181,21 @@ class CollectionData:
     def cpus(self) -> int:
         return self.system_info.cpus
 
+    @property
+    def plt(self):
+        return self._plt
+
     def get[T: CollectionTable](self, table_type: type[T]) -> T | None:
         table = self.tables.get(table_type.name(), None)
         if table:
             return cast(T, table)
         return None
 
-    def graph(self, out_dir: Path | None = None, no_trends: bool = False) -> None:
+    def graph(self, out_dir: Path | None = None, *, use_matplot: bool = False, no_trends: bool = False) -> None:
+        import plotext
+        from matplotlib import pyplot
+        self._plt = pyplot if use_matplot else plotext
+
         # TODO(Patrick) use verbosity for filtering graphs
         graph_dir = out_dir / self.benchmark / self.id if out_dir else None
         if graph_dir:
@@ -197,23 +205,25 @@ class CollectionData:
                 graph = graph_type.with_collection(collection_data=self)
                 if not graph:
                     continue
-                plt.title(graph.name())
-                plt.xlabel(graph.x_axis())
-                plt.ylabel(graph.y_axis())
+                self.plt.title(graph.name())
+                self.plt.xlabel(graph.x_axis())
+                self.plt.ylabel(graph.y_axis())
                 graph.plot()
                 if not no_trends:
                     graph.plot_trends()
-                # plt.legend() # required for matplotlib
-                plt.show()
-                if graph_dir:
-                    plt.save_fig(
-                        str(graph_dir / f"{graph.base_name().replace(' ', '_').lower()}.plt"),
-                        keep_colors=True,
-                    )
-                plt.clear_figure()
+                if self.plt is pyplot:
+                    pyplot.legend()
+                self.plt.show()
+                if self.plt is plotext:
+                    if graph_dir:
+                        plotext.save_fig(
+                            str(graph_dir / f"{graph.base_name().replace(' ', '_').lower()}.plt"),
+                            keep_colors=True,
+                        )
+                    plotext.clear_figure()
 
-    def dump(self, no_trends: bool = False):
-        self.graph(no_trends=no_trends)
+    def dump(self, *, use_matplot: bool, no_trends: bool = False):
+        self.graph(no_trends=no_trends, use_matplot=use_matplot)
         for name, table in self.tables.items():
             if name == SystemInfoTable.name():
                 print(f"{name}: {json.dumps(table.table.row(0, named=True), indent=4)}")

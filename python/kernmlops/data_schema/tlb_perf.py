@@ -1,5 +1,3 @@
-# from matplotlib import pyplot as plt
-import plotext as plt
 import polars as pl
 
 from data_schema.schema import (
@@ -91,6 +89,7 @@ class TLBPerfGraph(CollectionGraph):
     ):
         self.collection_data = collection_data
         self._tlb_perf_table = tlb_perf_table
+        self.plt = self.collection_data.plt
 
     def name(self) -> str:
         return f"{self.base_name()} for Collection {self.collection_data.id}"
@@ -111,7 +110,7 @@ class TLBPerfGraph(CollectionGraph):
         def plot_tlb(tlb_df: pl.DataFrame, *, tlb_type: str) -> None:
             tlb_df_by_cpu = tlb_df.group_by("cpu")
             for cpu, tlb_df_group in tlb_df_by_cpu:
-                plt.plot(
+                self.plt.plot(
                     (
                         (tlb_df_group.select("ts_uptime_us") / 1_000_000.0) - start_uptime_sec
                     ).to_series().to_list(),

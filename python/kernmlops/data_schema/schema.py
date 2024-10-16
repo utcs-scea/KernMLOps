@@ -205,6 +205,10 @@ class CollectionData:
                 graph = graph_type.with_collection(collection_data=self)
                 if not graph:
                     continue
+                figure = None
+                if self.plt is pyplot:
+                    figure = pyplot.figure(graph.base_name())
+
                 self.plt.title(graph.name())
                 self.plt.xlabel(graph.x_axis())
                 self.plt.ylabel(graph.y_axis())
@@ -212,8 +216,13 @@ class CollectionData:
                 if not no_trends:
                     graph.plot_trends()
                 if self.plt is pyplot:
-                    pyplot.legend()
-                self.plt.show()
+                    pyplot.legend(loc="upper left")
+
+                if figure is not None:
+                    figure.show()
+                else:
+                    self.plt.show()
+
                 if self.plt is plotext:
                     if graph_dir:
                         plotext.save_fig(
@@ -221,6 +230,8 @@ class CollectionData:
                             keep_colors=True,
                         )
                     plotext.clear_figure()
+        if self.plt is pyplot:
+            input()
 
     def dump(self, *, use_matplot: bool, no_trends: bool = False):
         self.graph(no_trends=no_trends, use_matplot=use_matplot)

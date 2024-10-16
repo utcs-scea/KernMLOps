@@ -113,7 +113,16 @@ class QuantaQueuedTable(CollectionTable):
         return self._table
 
     def filtered_table(self) -> pl.DataFrame:
-        return self.table
+        # filter out outliers
+        initial_datapoints = len(self.table)
+        max_queue_time_us = 1_000_000
+        quanta_df = self.table.filter(
+          pl.col("quanta_queued_time_us") < max_queue_time_us
+        )
+        datapoints_removed = initial_datapoints - len(quanta_df)
+        # TODO(Patrick): use logging
+        print(f"Filtered out {datapoints_removed} datapoints with max queue time {max_queue_time_us}us")
+        return quanta_df
 
     def graphs(self) -> list[type[CollectionGraph]]:
         return [QuantaQueuedGraph]
@@ -179,7 +188,7 @@ class QuantaRuntimeGraph(CollectionGraph):
         return "Benchmark Runtime (sec)"
 
     def y_axis(self) -> str:
-        return "Quanta Run Length (usec)"
+        return "Quanta Run Length (msec)"
 
     def plot(self) -> None:
         quanta_df = self._quanta_table.filtered_table()
@@ -192,7 +201,7 @@ class QuantaRuntimeGraph(CollectionGraph):
                 (
                     (quanta_df_group.select("quanta_end_uptime_us") / 1_000_000.0) - start_uptime_sec
                 ).to_series().to_list(),
-                quanta_df_group.select("quanta_run_length_us").to_series().to_list(),
+                (quanta_df_group.select("quanta_run_length_us") / 1_000.0).to_series().to_list(),
                 label=f"CPU {cpu[0]}",
             )
 
@@ -214,7 +223,7 @@ class QuantaRuntimeGraph(CollectionGraph):
                 (
                     (collector_runtimes.select("quanta_end_uptime_us") / 1_000_000.0) - start_uptime_sec
                 ).to_series().to_list(),
-                collector_runtimes.select("quanta_run_length_us").to_series().to_list(),
+                (collector_runtimes.select("quanta_run_length_us") / 1_000.0).to_series().to_list(),
                 label="Collector Process" if collector_pid == pid else label[:35],
             )
         print(f"Total processor time per cpu:\n{quanta_table.per_cpu_total_runtime_sec()}")
@@ -276,7 +285,7 @@ class QuantaQueuedGraph(CollectionGraph):
         return "Benchmark Runtime (sec)"
 
     def y_axis(self) -> str:
-        return "Quanta Queued Time (usec)"
+        return "Quanta Queued Time (msec)"
 
     def plot(self) -> None:
         quanta_df = self._quanta_table.filtered_table()
@@ -289,7 +298,7 @@ class QuantaQueuedGraph(CollectionGraph):
                 (
                     (quanta_df_group.select("quanta_end_uptime_us") / 1_000_000.0) - start_uptime_sec
                 ).to_series().to_list(),
-                quanta_df_group.select("quanta_queued_time_us").to_series().to_list(),
+                (quanta_df_group.select("quanta_queued_time_us") / 1_000.0).to_series().to_list(),
                 label=f"CPU {cpu[0]}",
             )
 
@@ -311,9 +320,8 @@ class QuantaQueuedGraph(CollectionGraph):
                 (
                     (collector_runtimes.select("quanta_end_uptime_us") / 1_000_000.0) - start_uptime_sec
                 ).to_series().to_list(),
-                collector_runtimes.select("quanta_queued_time_us").to_series().to_list(),
+                (collector_runtimes.select("quanta_queued_time_us") / 1_000.0).to_series().to_list(),
                 label="Collector Process" if collector_pid == pid else label[:35],
-                # marker="braille",
             )
         print(f"Total processor time per cpu:\n{quanta_table.per_cpu_total_runtime_sec()}")
 

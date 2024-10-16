@@ -2,10 +2,14 @@ import subprocess
 from pathlib import Path
 
 import psutil
-from data_schema import demote
+from data_schema import CollectionData, FileDataTable, demote
 
 from kernmlops_benchmark.benchmark import Benchmark
-from kernmlops_benchmark.errors import BenchmarkNotRunningError, BenchmarkRunningError
+from kernmlops_benchmark.errors import (
+    BenchmarkNotInCollectionData,
+    BenchmarkNotRunningError,
+    BenchmarkRunningError,
+)
 
 
 class LinuxBuildBenchmark(Benchmark):
@@ -70,3 +74,22 @@ class LinuxBuildBenchmark(Benchmark):
         if self.process is None:
             raise BenchmarkNotRunningError()
         self.process.terminate()
+
+    @classmethod
+    def plot_events(cls, collection_data: CollectionData) -> None:
+        if collection_data.benchmark != cls.name():
+            raise BenchmarkNotInCollectionData()
+        file_data = collection_data.get(FileDataTable)
+        if file_data is None:
+            return None
+        # TODO(Patrick): add CollectionGraph class to abstract away common graph paradigms
+        def plot_event(ts_us: int | None):
+            if ts_us is None:
+                return
+            collection_data.plt.axvline((ts_us / 1_000_000.0) - collection_data.start_uptime_sec)
+
+        plot_event(file_data.get_first_occurrence_us("make"))
+        plot_event(file_data.get_last_occurrence_us("bzImage"))
+        plot_event(file_data.get_last_occurrence_us("vmlinux.bin"))
+        plot_event(file_data.get_last_occurrence_us("vmlinux.o"))
+        plot_event(file_data.get_last_occurrence_us("vmlinux"))

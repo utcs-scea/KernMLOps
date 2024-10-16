@@ -193,6 +193,7 @@ class CollectionData:
 
     def graph(self, out_dir: Path | None = None, *, use_matplot: bool = False, no_trends: bool = False) -> None:
         import plotext
+        from kernmlops_benchmark import benchmarks
         from matplotlib import pyplot
         self._plt = pyplot if use_matplot else plotext
 
@@ -215,6 +216,8 @@ class CollectionData:
                 graph.plot()
                 if not no_trends:
                     graph.plot_trends()
+                if self.benchmark in benchmarks:
+                    benchmarks[self.benchmark].plot_events(collection_data=self)
                 if self.plt is pyplot:
                     pyplot.legend(loc="upper left")
 

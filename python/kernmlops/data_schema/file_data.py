@@ -48,3 +48,26 @@ class FileDataTable(CollectionTable):
     def total_files_opened(self) -> int:
         """Returns the total amount of unique files opened across all cpus."""
         return len(self.filtered_table().select("file_inode").unique("file_inode"))
+
+    def get_file_data(self, filename: str) -> pl.DataFrame:
+        return self.filtered_table().filter(pl.col("file_name") == filename)
+
+    def get_first_occurrence_us(self, filename: str) -> int | None:
+        file_data = self.get_file_data(filename)
+        if len(file_data) == 0:
+            return None
+        return file_data.sort(
+            "ts_uptime_us", descending=False
+        ).head(n=1).select(
+            "ts_uptime_us"
+        ).to_series().to_list()[0]
+
+    def get_last_occurrence_us(self, filename: str) -> int | None:
+        file_data = self.get_file_data(filename)
+        if len(file_data) == 0:
+            return None
+        return file_data.sort(
+            "ts_uptime_us", descending=True
+        ).head(n=1).select(
+            "ts_uptime_us"
+        ).to_series().to_list()[0]

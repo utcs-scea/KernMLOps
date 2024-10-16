@@ -44,11 +44,28 @@ class TLBPerfTable(CollectionTable):
     def graphs(self) -> list[type[CollectionGraph]]:
         return [DTLBPerfGraph, ITLBPerfGraph]
 
-    # the raw data is a cumulative representation, this returns the deltas
-    def as_dtlb_pdf(self) -> pl.DataFrame:
-        dtlb_df = self.filtered_table().filter(
+    def dtlb_table(self) -> pl.DataFrame:
+        return self.filtered_table().filter(
             pl.col("dtlb_event")
         )
+
+    def itlb_table(self) -> pl.DataFrame:
+        return self.filtered_table().filter(
+            pl.col("itlb_event")
+        )
+
+    def _total_misses(self, table: pl.DataFrame) -> int:
+        return table.group_by("cpu").max().sum().select("cumulative_tlb_misses").to_series().to_list()[0]
+
+    def total_dtlb_misses(self) -> int:
+        return self._total_misses(self.dtlb_table())
+
+    def total_itlb_misses(self) -> int:
+        return self._total_misses(self.itlb_table())
+
+    # the raw data is a cumulative representation, this returns the deltas
+    def as_dtlb_pdf(self) -> pl.DataFrame:
+        dtlb_df = self.dtlb_table()
         return cumulative_pma_as_pdf(
             dtlb_df,
             counter_column="cumulative_tlb_misses",
@@ -56,11 +73,9 @@ class TLBPerfTable(CollectionTable):
         )
 
     def as_itlb_pdf(self) -> pl.DataFrame:
-        dtlb_df = self.filtered_table().filter(
-            pl.col("itlb_event")
-        )
+        itlb_df = self.itlb_table()
         return cumulative_pma_as_pdf(
-            dtlb_df,
+            itlb_df,
             counter_column="cumulative_tlb_misses",
             counter_column_rename="tlb_misses",
         )
@@ -104,6 +119,7 @@ class DTLBPerfGraph(CollectionGraph):
         dtlb_df = self._tlb_perf_table.as_dtlb_pdf()
         # TODO(Patrick): fix tlb misses to scale by span time
         start_uptime_sec = self.collection_data.start_uptime_sec
+        print(f"Total dTLB misses: {self._tlb_perf_table.total_dtlb_misses()}")
 
         # group by and plot by cpu
         def plot_tlb(tlb_df: pl.DataFrame, *, tlb_type: str) -> None:
@@ -164,6 +180,7 @@ class ITLBPerfGraph(CollectionGraph):
         itlb_df = self._tlb_perf_table.as_itlb_pdf()
         # TODO(Patrick): fix tlb misses to scale by span time
         start_uptime_sec = self.collection_data.start_uptime_sec
+        print(f"Total iTLB misses: {self._tlb_perf_table.total_itlb_misses()}")
 
         # group by and plot by cpu
         def plot_tlb(tlb_df: pl.DataFrame, *, tlb_type: str) -> None:

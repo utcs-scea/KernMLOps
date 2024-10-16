@@ -49,6 +49,10 @@ class LinuxBuildBenchmark(Benchmark):
             ["bash", "-c", "sync && echo 3 > /proc/sys/vm/drop_caches"],
             stdout=subprocess.DEVNULL,
         )
+        subprocess.check_call(
+            ["bash", "-c", "echo never > /sys/kernel/mm/transparent_hugepage/enabled"],
+            stdout=subprocess.DEVNULL,
+        )
 
     def run(self) -> None:
         if self.process is not None:
@@ -86,7 +90,7 @@ class LinuxBuildBenchmark(Benchmark):
         def plot_event(ts_us: int | None):
             if ts_us is None:
                 return
-            collection_data.plt.axvline((ts_us / 1_000_000.0) - collection_data.start_uptime_sec)
+            #collection_data.plt.axvline((ts_us / 1_000_000.0) - collection_data.start_uptime_sec)
 
         plot_event(file_data.get_first_occurrence_us("make"))
         plot_event(file_data.get_last_occurrence_us("bzImage"))

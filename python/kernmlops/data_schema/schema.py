@@ -4,7 +4,9 @@ import json
 from pathlib import Path
 from typing import Mapping, cast
 
+import plotext
 import polars as pl
+from matplotlib import pyplot
 from typing_extensions import Protocol
 
 
@@ -145,9 +147,7 @@ class CollectionData:
         assert isinstance(system_info, SystemInfoTable)
         assert len(system_info.table) == 1
         self._system_info = system_info
-
-        import plotext as plt
-        self._plt = plt
+        self._plt = plotext
 
     @property
     def tables(self) -> Mapping[str, CollectionTable]:
@@ -192,9 +192,7 @@ class CollectionData:
         return None
 
     def graph(self, out_dir: Path | None = None, *, use_matplot: bool = False, no_trends: bool = False) -> None:
-        import plotext
         from kernmlops_benchmark import benchmarks
-        from matplotlib import pyplot
         self._plt = pyplot if use_matplot else plotext
 
         # TODO(Patrick) use verbosity for filtering graphs

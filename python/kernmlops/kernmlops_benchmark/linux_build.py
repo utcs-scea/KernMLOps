@@ -1,7 +1,6 @@
 import subprocess
 from pathlib import Path
 
-import psutil
 from data_schema import CollectionData, FileDataTable, demote
 
 from kernmlops_benchmark.benchmark import Benchmark
@@ -20,7 +19,7 @@ class LinuxBuildBenchmark(Benchmark):
 
     def __init__(self, benchmark_dir: Path, cpus: int | None = None):
         self.benchmark_dir = benchmark_dir / self.name()
-        self.cpus = cpus or (3 * psutil.cpu_count(logical=False))
+        self.cpus = 8 #cpus or (3 * psutil.cpu_count(logical=False))
         self.process: subprocess.Popen | None = None
 
     def is_configured(self) -> bool:
@@ -50,7 +49,7 @@ class LinuxBuildBenchmark(Benchmark):
             stdout=subprocess.DEVNULL,
         )
         subprocess.check_call(
-            ["bash", "-c", "echo never > /sys/kernel/mm/transparent_hugepage/enabled"],
+            ["bash", "-c", "echo always > /sys/kernel/mm/transparent_hugepage/enabled"],
             stdout=subprocess.DEVNULL,
         )
 

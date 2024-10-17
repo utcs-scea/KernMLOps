@@ -206,7 +206,7 @@ class CollectionData:
                     continue
                 figure = None
                 if self.plt is pyplot:
-                    figure = pyplot.figure(graph.base_name())
+                    figure = pyplot.figure(graph.name())
 
                 self.plt.title(graph.name())
                 self.plt.xlabel(graph.x_axis())
@@ -220,16 +220,25 @@ class CollectionData:
                     pyplot.legend(loc="upper left")
 
                 if figure is not None:
+                    manager = pyplot.get_current_fig_manager()
+                    if manager is not None:
+                        manager.full_screen_toggle()
                     figure.show()
                 else:
                     self.plt.show()
 
-                if self.plt is plotext:
-                    if graph_dir:
+                if graph_dir:
+                    if self.plt is plotext:
                         plotext.save_fig(
                             str(graph_dir / f"{graph.base_name().replace(' ', '_').lower()}.plt"),
                             keep_colors=True,
                         )
+                    else:
+                        pyplot.savefig(
+                            str(graph_dir / f"{graph.base_name().replace(' ', '_').lower()}.png"),
+                            dpi=100,
+                        )
+                if self.plt is plotext:
                     plotext.clear_figure()
         if self.plt is pyplot:
             input()

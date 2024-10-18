@@ -8,8 +8,7 @@ from typing import Any, Final, Mapping, Protocol
 
 import polars as pl
 from bcc import BPF, PerfType
-from data_schema import CollectionTable
-from data_schema.tlb_perf import DTLBPerfTable, ITLBPerfTable
+from data_schema import CollectionTable, perf_table_types
 
 from data_collection.bpf_instrumentation.bpf_hook import BPFProgram
 
@@ -230,13 +229,29 @@ class TLBPerfBPFHook(BPFProgram):
 
   def __init__(self):
     self._perf_data = dict[str, list[PerfData]]()
-    bpf_text = open(Path(__file__).parent / "bpf/tlb_perf.bpf.c", "r").read()
+    self.bpf_text = open(Path(__file__).parent / "bpf/tlb_perf.bpf.c", "r").read()
+    self.loaded_custom_hw_events = dict[str, CustomHWConfig]()
+
     # add perf handlers
+    def init_perf_handler(perf_event: CustomHWEvent | str):
+      if isinstance(perf_event, str):
+          self.bpf_text += PERF_HANDLER.replace("NAME", perf_event)
+          self._perf_data[perf_event] = list[PerfData]()
+      else:
+        hw_config = CustomHWConfigManager.get_hw_event(perf_event)
+        if hw_config is not None:
+          self.bpf_text += PERF_HANDLER.replace("NAME", perf_event.name())
+          self._perf_data[perf_event.name()] = list[PerfData]()
+          self.loaded_custom_hw_events[perf_event.name()] = hw_config
+        else:
+          print(f"info: could not enable perf counter for {perf_event.name()}")
+
     universal_perf_events = ["dtlb_misses", "itlb_misses"]
+    hw_specific_perf_events = [TLBFlushEvent()]
     for perf_event in universal_perf_events:
-      bpf_text += PERF_HANDLER.replace("NAME", perf_event)
-      self._perf_data[perf_event] = list[PerfData]()
-    self.bpf_text = bpf_text
+      init_perf_handler(perf_event)
+    for perf_event in hw_specific_perf_events:
+      init_perf_handler(perf_event)
 
   def load(self, collection_id: str):
     self.collection_id = collection_id
@@ -262,6 +277,13 @@ class TLBPerfBPFHook(BPFProgram):
       fn_name=b"itlb_misses_on",
       sample_freq=1000,
     )
+    for name, custom_hw_event in self.loaded_custom_hw_events.items():
+      self.bpf.attach_perf_event(
+        ev_type=PerfType.RAW,
+        ev_config=custom_hw_event.code,
+        fn_name=bytes(f"{str(name)}_on", encoding="utf-8"),
+        sample_freq=1000,
+      )
     for event_name in self._perf_data.keys():
       self.bpf[event_name].open_perf_buffer(self._perf_handler(event_name), page_cnt=64)
 
@@ -272,17 +294,13 @@ class TLBPerfBPFHook(BPFProgram):
     self.bpf.cleanup()
 
   def data(self) -> list[CollectionTable]:
-    dtlb_df = pl.DataFrame(self._perf_data["dtlb_misses"])
-    itlb_df = pl.DataFrame(self._perf_data["itlb_misses"])
     return [
-      DTLBPerfTable.from_df_id(
-        dtlb_df,
+      perf_table_types[event_name].from_df_id(
+        pl.DataFrame(self._perf_data[event_name]),
         collection_id=self.collection_id,
-      ),
-      ITLBPerfTable.from_df_id(
-        itlb_df,
-        collection_id=self.collection_id,
-      ),
+      )
+      for event_name in self._perf_data.keys()
+      if event_name in perf_table_types
     ]
 
   def clear(self):

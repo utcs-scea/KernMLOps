@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any
+from typing import Any, Final
 
 import polars as pl
 from bcc import BPF, PerfType
@@ -38,9 +38,27 @@ class PerfHWCacheConfig:
     return (cache.value) | (op.value << 8) | (result.value << 16)
 
 
+PERF_HANDLER: Final[str] = """
+BPF_PERF_OUTPUT(NAME);
+int NAME_on(struct bpf_perf_event_data* ctx) {
+  struct bpf_perf_event_value value_buf;
+  if (bpf_perf_prog_read_value(ctx, (void*)&value_buf, sizeof(struct bpf_perf_event_value))) {
+    return 0;
+  }
+  struct perf_event_data data;
+  __builtin_memset(&data, 0, sizeof(data));
+  u64 ts = bpf_ktime_get_ns();
+  data.ts_uptime_us = ts / 1000;
+  data.count = value_buf.counter;
+  data.enabled_time_us = value_buf.enabled / 1000;
+  data.running_time_us = value_buf.running / 1000;
+  NAME.perf_submit(ctx, &data, sizeof(data));
+  return 0;
+}
+"""
 
 @dataclass(frozen=True)
-class TLBPerfData:
+class PerfData:
   cpu: int
   ts_uptime_us: int
   cumulative_tlb_misses: int
@@ -49,7 +67,7 @@ class TLBPerfData:
 
   @classmethod
   def from_event(cls, cpu: int, event: Any):
-    return TLBPerfData(
+    return PerfData(
         cpu=cpu,
         ts_uptime_us=event.ts_uptime_us,
         cumulative_tlb_misses=event.count,
@@ -65,10 +83,14 @@ class TLBPerfBPFHook(BPFProgram):
     return "tlb_perf"
 
   def __init__(self):
-    self.bpf_text = open(Path(__file__).parent / "bpf/tlb_perf.bpf.c", "r").read()
-
-    self.dtlb_perf_data = list[TLBPerfData]()
-    self.itlb_perf_data = list[TLBPerfData]()
+    self._perf_data = dict[str, list[PerfData]]()
+    bpf_text = open(Path(__file__).parent / "bpf/tlb_perf.bpf.c", "r").read()
+    # add perf handlers
+    universal_perf_events = ["dtlb_misses", "itlb_misses"]
+    for perf_event in universal_perf_events:
+      bpf_text += PERF_HANDLER.replace("NAME", perf_event)
+      self._perf_data[perf_event] = list[PerfData]()
+    self.bpf_text = bpf_text
 
   def load(self, collection_id: str):
     self.collection_id = collection_id
@@ -81,7 +103,7 @@ class TLBPerfBPFHook(BPFProgram):
         op=PerfHWCacheConfig.Op.PERF_COUNT_HW_CACHE_OP_READ,
         result=PerfHWCacheConfig.Result.PERF_COUNT_HW_CACHE_RESULT_MISS,
       ),
-      fn_name=b"on_dtlb_cache_miss",
+      fn_name=b"dtlb_misses_on",
       sample_freq=1000,
     )
     self.bpf.attach_perf_event(
@@ -91,11 +113,11 @@ class TLBPerfBPFHook(BPFProgram):
         op=PerfHWCacheConfig.Op.PERF_COUNT_HW_CACHE_OP_READ,
         result=PerfHWCacheConfig.Result.PERF_COUNT_HW_CACHE_RESULT_MISS,
       ),
-      fn_name=b"on_itlb_cache_miss",
+      fn_name=b"itlb_misses_on",
       sample_freq=1000,
     )
-    self.bpf["dtlb_misses"].open_perf_buffer(self._dtlb_misses_handler, page_cnt=64)
-    self.bpf["itlb_misses"].open_perf_buffer(self._itlb_misses_handler, page_cnt=64)
+    for event_name in self._perf_data.keys():
+      self.bpf[event_name].open_perf_buffer(self._perf_handler(event_name), page_cnt=64)
 
   def poll(self):
     self.bpf.perf_buffer_poll()
@@ -104,8 +126,12 @@ class TLBPerfBPFHook(BPFProgram):
     self.bpf.cleanup()
 
   def data(self) -> list[CollectionTable]:
-    dtlb_df = pl.DataFrame(self.dtlb_perf_data).with_columns(pl.lit(True).alias("dtlb_event"), pl.lit(False).alias("itlb_event"))
-    itlb_df = pl.DataFrame(self.itlb_perf_data).with_columns(pl.lit(False).alias("dtlb_event"), pl.lit(True).alias("itlb_event"))
+    dtlb_df = pl.DataFrame(self._perf_data["dtlb_misses"]).with_columns(
+      pl.lit(True).alias("dtlb_event"), pl.lit(False).alias("itlb_event")
+    )
+    itlb_df = pl.DataFrame(self._perf_data["itlb_misses"]).with_columns(
+      pl.lit(False).alias("dtlb_event"), pl.lit(True).alias("itlb_event")
+    )
     return [
       TLBPerfTable.from_df_id(
         pl.concat([dtlb_df, itlb_df]),
@@ -114,24 +140,18 @@ class TLBPerfBPFHook(BPFProgram):
     ]
 
   def clear(self):
-    self.dtlb_perf_data.clear()
-    self.itlb_perf_data.clear()
+    self._perf_data.clear()
 
   def pop_data(self) -> list[CollectionTable]:
     tlb_miss_tables = self.data()
     self.clear()
     return tlb_miss_tables
 
-  def _dtlb_misses_handler(self, cpu, tlb_perf_event, size):
-    event = self.bpf["dtlb_misses"].event(tlb_perf_event)
-    try:
-        self.dtlb_perf_data.append(TLBPerfData.from_event(cpu, event))
-    except Exception as _:
-       pass
-
-  def _itlb_misses_handler(self, cpu, tlb_perf_event, size):
-    event = self.bpf["itlb_misses"].event(tlb_perf_event)
-    try:
-        self.itlb_perf_data.append(TLBPerfData.from_event(cpu, event))
-    except Exception as _:
-       pass
+  def _perf_handler(self, event_name: str):
+    def _perf_event_handler(cpu, perf_event_data, size):
+      event = self.bpf[event_name].event(perf_event_data)
+      try:
+          self._perf_data[event_name].append(PerfData.from_event(cpu, event))
+      except Exception as _:
+        pass
+    return _perf_event_handler

@@ -315,7 +315,6 @@ class TLBPerfBPFHook(BPFProgram):
       else:
         hw_config_value = CustomHWConfigManager.get_hw_config(perf_event)
         if hw_config_value is not None:
-          print(hw_config_value)
           self.bpf_text += PERF_HANDLER.replace("NAME", perf_event.name())
           self._perf_data[perf_event.name()] = list[PerfData]()
           self.loaded_custom_hw_event_configs[perf_event.name()] = hw_config_value

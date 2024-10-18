@@ -1,7 +1,10 @@
+import os
+import subprocess
 from dataclasses import dataclass
 from enum import Enum
+from functools import cache
 from pathlib import Path
-from typing import Any, Final
+from typing import Any, Final, Mapping, Protocol
 
 import polars as pl
 from bcc import BPF, PerfType
@@ -36,6 +39,148 @@ class PerfHWCacheConfig:
   @classmethod
   def config(cls, cache: Cache, op: Op, result: Result) -> int:
     return (cache.value) | (op.value << 8) | (result.value << 16)
+
+
+class CustomHWEvent(Protocol):
+  @classmethod
+  def name(cls) -> str: ...
+
+  @classmethod
+  def hw_names(cls) -> list[str]: ...
+
+
+class TLBFlushEvent(CustomHWEvent):
+  @classmethod
+  def name(cls) -> str:
+    return "tlb_flushes"
+
+  @classmethod
+  def hw_names(cls) -> list[str]:
+    return ["TLB_FLUSH", "TLB_FLUSHES"]
+
+
+@dataclass(frozen=True)
+class CustomHWConfig:
+  id: int
+  pmu_name: str
+  name: str
+  equiv: str | None
+  # flags are actually a list of strings if present
+  flags: str | None
+  description: str
+  code: int
+  # umask entries are actually objects, not strings
+  umasks: list[str]
+  # modifier entries are actually objects, not strings
+  modifiers: list[str]
+
+  def dump(self) -> str:
+    return f"""
+#-----------------------------
+IDX : {self.id}
+PMU name : {self.pmu_name}
+Name : {self.name}
+Equiv : {self.equiv}
+Flags : {self.flags}
+Desc : {self.description}
+Code : {self.code}
+{"\n".join(self.umasks)}
+{"\n".join(self.modifiers)}
+"""
+
+  @classmethod
+  def from_evtinfo(cls, evt_lines: list[str]) -> "CustomHWConfig | None":
+    id: int | None = None
+    pmu_name: str | None = None
+    name: str | None = None
+    equiv: str | None = None
+    flags: str | None = None
+    description: str | None = None
+    code: int | None = None
+    umasks = list[str]()
+    modifiers = list[str]()
+
+    for evt_line in evt_lines:
+      if not evt_line:
+        continue
+      split_line = evt_line.split(":", maxsplit=1)
+      if len(split_line) != 2:
+        continue
+      key = split_line[0]
+      value = split_line[1]
+      key = key.lstrip().rstrip()
+      value = value.lstrip().rstrip()
+      match key:
+        case "IDX":
+          id = int(value)
+        case "PMU name":
+          pmu_name = value
+        case "Name":
+          name = value.upper()
+        case "Equiv":
+          equiv = None if value == "None" else value
+        case "Flags":
+          flags = None if value == "None" else value
+        case "Desc":
+          description = value
+        case "Code":
+          code = int(value, base=0)
+      if key.startswith("Umask"):
+        umasks.append(evt_line)
+      if key.startswith("Modif"):
+        modifiers.append(evt_line)
+    if id is None or pmu_name is None or name is None or description is None or code is None:
+      print("warning: could not parse a hardware event's info")
+      print(evt_lines)
+      return None
+    return CustomHWConfig(
+      id=id,
+      pmu_name=pmu_name,
+      name=name,
+      equiv=equiv,
+      flags=flags,
+      description=description,
+      code=code,
+      umasks=umasks,
+      modifiers=modifiers,
+    )
+
+
+class CustomHWConfigManager:
+  @classmethod
+  @cache
+  def hw_event_map(cls) -> Mapping[str, CustomHWConfig]:
+    hw_events = dict[str, CustomHWConfig]()
+    pfm4_dir = os.environ.get("LIB_PFM4_DIR")
+    if not pfm4_dir:
+      # TODO(Patrick): make this a warning
+      print("warning: libpfm4 has not been properly configured, disabling custom perf counters")
+      return hw_events
+    showevtinfo = Path(pfm4_dir) / "examples" / "showevtinfo"
+    if not showevtinfo.is_file():
+      return hw_events
+    raw_event_info = subprocess.check_output(str(showevtinfo))
+    if isinstance(raw_event_info, bytes):
+      raw_event_info = raw_event_info.decode("utf-8")
+    if not isinstance(raw_event_info, str):
+      return hw_events
+    raw_event_info = raw_event_info.lstrip().rstrip()
+    events_info = raw_event_info.split("#-----------------------------\n")
+    if events_info:
+      events_info = events_info[1:]
+    for event_info in events_info:
+      hw_config = CustomHWConfig.from_evtinfo(event_info.splitlines())
+      if hw_config is not None:
+        hw_events[hw_config.name] = hw_config
+    return hw_events
+
+  @classmethod
+  def get_hw_event(cls, event: CustomHWEvent) -> CustomHWConfig | None:
+    for hw_name in event.hw_names():
+      hw_event_config = cls.hw_event_map().get(hw_name.upper())
+      if hw_event_config is not None:
+        return hw_event_config
+    return None
 
 
 PERF_HANDLER: Final[str] = """

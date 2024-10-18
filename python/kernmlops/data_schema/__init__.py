@@ -15,7 +15,7 @@ from data_schema.schema import (
     collection_id_column,
     cumulative_pma_as_pdf,
 )
-from data_schema.tlb_perf import TLBPerfTable
+from data_schema.tlb_perf import DTLBPerfTable, ITLBPerfTable
 
 table_types = [
     SystemInfoTable,
@@ -23,7 +23,8 @@ table_types = [
     QuantaQueuedTable,
     ProcessMetadataTable,
     FileDataTable,
-    TLBPerfTable,
+    DTLBPerfTable,
+    ITLBPerfTable,
 ]
 
 def demote(user_id: int | None = None, group_id: int | None = None) -> Callable[[], None]:

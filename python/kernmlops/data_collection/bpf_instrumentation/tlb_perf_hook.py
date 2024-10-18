@@ -8,7 +8,8 @@ from typing import Any, Final, Mapping, Protocol
 
 import polars as pl
 from bcc import BPF, PerfType
-from data_schema import CollectionTable, TLBPerfTable
+from data_schema import CollectionTable
+from data_schema.tlb_perf import DTLBPerfTable, ITLBPerfTable
 
 from data_collection.bpf_instrumentation.bpf_hook import BPFProgram
 
@@ -206,7 +207,7 @@ int NAME_on(struct bpf_perf_event_data* ctx) {
 class PerfData:
   cpu: int
   ts_uptime_us: int
-  cumulative_tlb_misses: int
+  cumulative_count: int
   pmu_enabled_time_us: int
   pmu_running_time_us: int
 
@@ -215,7 +216,7 @@ class PerfData:
     return PerfData(
         cpu=cpu,
         ts_uptime_us=event.ts_uptime_us,
-        cumulative_tlb_misses=event.count,
+        cumulative_count=event.count,
         pmu_enabled_time_us=event.enabled_time_us,
         pmu_running_time_us=event.running_time_us,
     )
@@ -271,15 +272,15 @@ class TLBPerfBPFHook(BPFProgram):
     self.bpf.cleanup()
 
   def data(self) -> list[CollectionTable]:
-    dtlb_df = pl.DataFrame(self._perf_data["dtlb_misses"]).with_columns(
-      pl.lit(True).alias("dtlb_event"), pl.lit(False).alias("itlb_event")
-    )
-    itlb_df = pl.DataFrame(self._perf_data["itlb_misses"]).with_columns(
-      pl.lit(False).alias("dtlb_event"), pl.lit(True).alias("itlb_event")
-    )
+    dtlb_df = pl.DataFrame(self._perf_data["dtlb_misses"])
+    itlb_df = pl.DataFrame(self._perf_data["itlb_misses"])
     return [
-      TLBPerfTable.from_df_id(
-        pl.concat([dtlb_df, itlb_df]),
+      DTLBPerfTable.from_df_id(
+        dtlb_df,
+        collection_id=self.collection_id,
+      ),
+      ITLBPerfTable.from_df_id(
+        itlb_df,
         collection_id=self.collection_id,
       ),
     ]

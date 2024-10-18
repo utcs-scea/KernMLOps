@@ -41,12 +41,18 @@ class PerfHWCacheConfig:
     return (cache.value) | (op.value << 8) | (result.value << 16)
 
 
+@dataclass(frozen=True)
+class CustomHWEventID:
+  name: str
+  umask: str | None
+
+
 class CustomHWEvent(Protocol):
   @classmethod
   def name(cls) -> str: ...
 
   @classmethod
-  def hw_names(cls) -> list[str]: ...
+  def hw_ids(cls) -> list[CustomHWEventID]: ...
 
 
 class TLBFlushEvent(CustomHWEvent):
@@ -55,8 +61,42 @@ class TLBFlushEvent(CustomHWEvent):
     return "tlb_flushes"
 
   @classmethod
-  def hw_names(cls) -> list[str]:
-    return ["TLB_FLUSH", "TLB_FLUSHES"]
+  def hw_ids(cls) -> list[CustomHWEventID]:
+    return [
+      CustomHWEventID(name="TLB_FLUSHES", umask="All"),
+      CustomHWEventID(name="TLB_FLUSH", umask="STLB_ANY"),
+    ]
+
+
+@dataclass(frozen=True)
+class CustomHWConfigUmask:
+  id: str
+  code: int
+  source: str
+  name: str
+  # flags are actually a list of strings if present
+  flags: str | None
+  description: str
+
+  def dump(self) -> str:
+    return f"{self.id} : {self.code} : {self.source} : {self.name} : {self.flags} : {self.description}"
+
+  @classmethod
+  def from_evtline(cls, evt_line: str) -> "CustomHWConfigUmask | None":
+    fields = [
+      field.lstrip().rstrip()
+      for field in evt_line.split(":")
+    ]
+    if len(fields) < 6:
+      return None
+    return CustomHWConfigUmask(
+      id=fields[0],
+      code=int(fields[1], base=0),
+      source=fields[2],
+      name=fields[3][1:-1],
+      flags=fields[4],
+      description=fields[5],
+    )
 
 
 @dataclass(frozen=True)
@@ -69,10 +109,21 @@ class CustomHWConfig:
   flags: str | None
   description: str
   code: int
-  # umask entries are actually objects, not strings
-  umasks: list[str]
+  code_length_hex: int
+  umasks: Mapping[str, CustomHWConfigUmask]
   # modifier entries are actually objects, not strings
   modifiers: list[str]
+
+  def config(self, id: CustomHWEventID) -> int | None:
+    if id.name.upper() != self.name:
+      return None
+    if id.umask is None:
+      return self.code
+    umask = self.umasks.get(id.umask.upper())
+    if umask is None:
+      return None
+    # TODO(Patrick): confirm this left shift for Umasks works everywhere
+    return (self.code) | (umask.code << (4 * self.code_length_hex))
 
   def dump(self) -> str:
     return f"""
@@ -84,7 +135,10 @@ Equiv : {self.equiv}
 Flags : {self.flags}
 Desc : {self.description}
 Code : {self.code}
-{"\n".join(self.umasks)}
+{"\n".join([
+  umask.dump()
+  for umask in self.umasks.values()
+])}
 {"\n".join(self.modifiers)}
 """
 
@@ -97,7 +151,8 @@ Code : {self.code}
     flags: str | None = None
     description: str | None = None
     code: int | None = None
-    umasks = list[str]()
+    code_length_hex: int = 2
+    umasks = dict[str, CustomHWConfigUmask]()
     modifiers = list[str]()
 
     for evt_line in evt_lines:
@@ -125,8 +180,15 @@ Code : {self.code}
           description = value
         case "Code":
           code = int(value, base=0)
+          code_length_hex = len(value) - 2
       if key.startswith("Umask"):
-        umasks.append(evt_line)
+        umask = CustomHWConfigUmask.from_evtline(evt_line)
+        if umask is not None:
+          umasks[umask.name.upper()] = umask
+        else:
+          print("warning: could not parse a hardware event's umask info")
+          print(evt_line)
+          return None
       if key.startswith("Modif"):
         modifiers.append(evt_line)
     if id is None or pmu_name is None or name is None or description is None or code is None:
@@ -141,6 +203,7 @@ Code : {self.code}
       flags=flags,
       description=description,
       code=code,
+      code_length_hex=code_length_hex,
       umasks=umasks,
       modifiers=modifiers,
     )
@@ -176,10 +239,22 @@ class CustomHWConfigManager:
 
   @classmethod
   def get_hw_event(cls, event: CustomHWEvent) -> CustomHWConfig | None:
-    for hw_name in event.hw_names():
-      hw_event_config = cls.hw_event_map().get(hw_name.upper())
+    for hw_id in event.hw_ids():
+      hw_event_config = cls.hw_event_map().get(hw_id.name.upper())
       if hw_event_config is not None:
-        return hw_event_config
+        hw_config_value = hw_event_config.config(hw_id)
+        if hw_config_value is not None:
+          return hw_event_config
+    return None
+
+  @classmethod
+  def get_hw_config(cls, event: CustomHWEvent) -> int | None:
+    for hw_id in event.hw_ids():
+      hw_event_config = cls.hw_event_map().get(hw_id.name.upper())
+      if hw_event_config is not None:
+        hw_config_value = hw_event_config.config(hw_id)
+        if hw_config_value is not None:
+          return hw_config_value
     return None
 
 
@@ -230,7 +305,7 @@ class TLBPerfBPFHook(BPFProgram):
   def __init__(self):
     self._perf_data = dict[str, list[PerfData]]()
     self.bpf_text = open(Path(__file__).parent / "bpf/tlb_perf.bpf.c", "r").read()
-    self.loaded_custom_hw_events = dict[str, CustomHWConfig]()
+    self.loaded_custom_hw_event_configs = dict[str, int]()
 
     # add perf handlers
     def init_perf_handler(perf_event: CustomHWEvent | str):
@@ -238,11 +313,12 @@ class TLBPerfBPFHook(BPFProgram):
           self.bpf_text += PERF_HANDLER.replace("NAME", perf_event)
           self._perf_data[perf_event] = list[PerfData]()
       else:
-        hw_config = CustomHWConfigManager.get_hw_event(perf_event)
-        if hw_config is not None:
+        hw_config_value = CustomHWConfigManager.get_hw_config(perf_event)
+        if hw_config_value is not None:
+          print(hw_config_value)
           self.bpf_text += PERF_HANDLER.replace("NAME", perf_event.name())
           self._perf_data[perf_event.name()] = list[PerfData]()
-          self.loaded_custom_hw_events[perf_event.name()] = hw_config
+          self.loaded_custom_hw_event_configs[perf_event.name()] = hw_config_value
         else:
           print(f"info: could not enable perf counter for {perf_event.name()}")
 
@@ -277,10 +353,10 @@ class TLBPerfBPFHook(BPFProgram):
       fn_name=b"itlb_misses_on",
       sample_freq=1000,
     )
-    for name, custom_hw_event in self.loaded_custom_hw_events.items():
+    for name, custom_hw_config in self.loaded_custom_hw_event_configs.items():
       self.bpf.attach_perf_event(
         ev_type=PerfType.RAW,
-        ev_config=custom_hw_event.code,
+        ev_config=custom_hw_config,
         fn_name=bytes(f"{str(name)}_on", encoding="utf-8"),
         sample_freq=1000,
       )

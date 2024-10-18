@@ -21,9 +21,9 @@ all_hooks = [
 @cache
 def hooks() -> list[BPFProgram]:
     return [
-        #ProcessMetadataHook(),
-        #FileDataBPFHook(),
-        #QuantaRuntimeBPFHook(),
+        ProcessMetadataHook(),
+        FileDataBPFHook(),
+        QuantaRuntimeBPFHook(),
         TLBPerfBPFHook(),
     ]
 

@@ -12,6 +12,7 @@ from data_schema.schema import (
     CollectionData,
     CollectionGraph,
     CollectionTable,
+    GraphEngine,
     PerfCollectionTable,
     SystemInfoTable,
     collection_id_column,
@@ -65,5 +66,6 @@ __all__ = [
     "CollectionTable",
     "CollectionData",
     "CollectionGraph",
+    "GraphEngine",
     "SystemInfoTable",
 ]

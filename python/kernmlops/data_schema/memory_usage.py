@@ -1,9 +1,9 @@
 import polars as pl
 
 from data_schema.schema import (
-    CollectionData,
     CollectionGraph,
     CollectionTable,
+    GraphEngine,
 )
 
 
@@ -65,11 +65,11 @@ class MemoryUsageTable(CollectionTable):
 class MemoryUsageGraph(CollectionGraph):
 
     @classmethod
-    def with_collection(cls, collection_data: "CollectionData") -> "CollectionGraph | None":
-        memory_usage_table = collection_data.get(MemoryUsageTable)
+    def with_graph_engine(cls, graph_engine: GraphEngine) -> CollectionGraph | None:
+        memory_usage_table = graph_engine.collection_data.get(MemoryUsageTable)
         if memory_usage_table is not None:
             return MemoryUsageGraph(
-                collection_data=collection_data,
+                graph_engine=graph_engine,
                 memory_usage_table=memory_usage_table
             )
         return None
@@ -81,8 +81,6 @@ class MemoryUsageGraph(CollectionGraph):
     @property
     def plot_lines(self) -> list[str]:
         return [
-            #"mem_total_bytes",
-            #"mem_free_bytes",
             "cached_bytes",
             "anon_pages_total_bytes",
             "anon_hugepages_total_bytes",
@@ -92,12 +90,12 @@ class MemoryUsageGraph(CollectionGraph):
 
     def __init__(
         self,
-        collection_data: CollectionData,
+        graph_engine: GraphEngine,
         memory_usage_table: MemoryUsageTable,
     ):
-        self.collection_data = collection_data
+        self.graph_engine = graph_engine
+        self.collection_data = graph_engine.collection_data
         self._memory_usage_table = memory_usage_table
-        self.plt = self.collection_data.plt
 
     def name(self) -> str:
         return f"{self.base_name()} for Collection {self.collection_data.id}"
@@ -113,7 +111,7 @@ class MemoryUsageGraph(CollectionGraph):
         start_uptime_sec = self.collection_data.start_uptime_sec
 
         for plot_line in self.plot_lines:
-            self.plt.plot(
+            self.graph_engine.plot(
                 (
                     (memory_df.select("ts_uptime_us") / 1_000_000.0) - start_uptime_sec
                 ).to_series().to_list(),

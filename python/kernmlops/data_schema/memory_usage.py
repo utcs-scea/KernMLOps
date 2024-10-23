@@ -107,6 +107,9 @@ class MemoryUsageGraph(CollectionGraph):
         return "Memory (GB)"
 
     def plot(self) -> None:
+        self.plot_trends()
+
+    def plot_trends(self) -> None:
         memory_df = self._memory_usage_table.filtered_table()
         start_uptime_sec = self.collection_data.start_uptime_sec
 
@@ -117,7 +120,5 @@ class MemoryUsageGraph(CollectionGraph):
                 ).to_series().to_list(),
                 (memory_df.select(plot_line) / (1_024.0)**3).to_series().to_list(),
                 label=plot_line.replace("bytes", "gb"),
+                y_axis=self.y_axis(),
             )
-
-    def plot_trends(self) -> None:
-        pass

@@ -266,8 +266,10 @@ class GraphEngine:
     ):
         self.collection_data = collection_data
         self._plt = pyplot if use_matplot else plotext
+        self._y_axis: str | None = None
         self._figure = None
         self._ax = None
+        self._ax2 = None
         self._cleared = False
 
     def graph(
@@ -294,17 +296,20 @@ class GraphEngine:
         if self._plt is pyplot:
             self._figure, self._ax = pyplot.subplots()
         self._plt.title(graph.name())
+        self._y_axis = graph.y_axis()
         if not self._ax:
             self._plt.xlabel(graph.x_axis())
-            self._plt.ylabel(graph.y_axis())
+            self._plt.ylabel(self._y_axis)
         else:
             self._ax.set_xlabel(graph.x_axis())
-            self._ax.set_ylabel(graph.y_axis())
+            self._ax.set_ylabel(self._y_axis)
         self._cleared = False
 
     def _finalize(self) -> None:
-        if self._plt is pyplot:
-            pyplot.legend(loc="upper left")
+        if self._ax is not None:
+            self._ax.legend(loc="upper left")
+        if self._ax2 is not None:
+            self._ax2.legend(loc="upper right")
 
     def _show(self) -> None:
         if self._figure is not None:
@@ -316,11 +321,17 @@ class GraphEngine:
         else:
             self._plt.show()
 
-    def scatter(self, x_data: list[float], y_data: list[float], label: str) -> None:
+    def scatter(self, x_data: list[float], y_data: list[float], *, label: str) -> None:
         self._plt.scatter(x_data, y_data, label=label)
 
-    def plot(self, x_data: list[float], y_data: list[float], label: str) -> None:
-        self._plt.plot(x_data, y_data, label=label)
+    def plot(self, x_data: list[float], y_data: list[float], *, label: str, y_axis: str | None = None) -> None:
+        if not y_axis or y_axis == self._y_axis:
+            self._plt.plot(x_data, y_data, label=label)
+        elif self._ax is not None:
+            if self._ax2 is None:
+                self._ax2 = self._ax.twinx()
+                self._ax2.set_ylabel(y_axis)
+            self._ax2.plot(x_data, y_data, label=label)
 
     def plot_event_as_sec(self, *, ts_us: int | None) -> None:
         if ts_us is None:
@@ -353,6 +364,7 @@ class GraphEngine:
             plotext.clear_figure()
         self._figure = None
         self._ax = None
+        self._ax2 = None
         self._cleared = True
 
 
@@ -456,6 +468,11 @@ class RatePerfGraph(CollectionGraph, Protocol):
     def perf_table_type(cls) -> type[PerfCollectionTable]: ...
 
     @classmethod
+    def trend_graph(cls) -> type[CollectionGraph] | None:
+        """Returns a graph to use for trend lines."""
+        return None
+
+    @classmethod
     def base_name(cls) -> str:
         return f"{cls.perf_table_type().component_name()} Performance"
 
@@ -503,4 +520,8 @@ class RatePerfGraph(CollectionGraph, Protocol):
         plot_rate(pdf_df)
 
     def plot_trends(self) -> None:
-        pass
+        trend_graph_type = self.trend_graph()
+        if trend_graph_type is not None:
+            trend_graph = trend_graph_type.with_graph_engine(self.graph_engine)
+            if trend_graph is not None:
+                trend_graph.plot_trends()

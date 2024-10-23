@@ -1,5 +1,6 @@
 import polars as pl
 
+from data_schema.memory_usage import MemoryUsageGraph
 from data_schema.schema import (
     CollectionGraph,
     GraphEngine,
@@ -44,6 +45,10 @@ class DTLBRateGraph(RatePerfGraph):
     @classmethod
     def perf_table_type(cls) -> type[PerfCollectionTable]:
         return DTLBPerfTable
+
+    @classmethod
+    def trend_graph(cls) -> type[CollectionGraph] | None:
+        return MemoryUsageGraph
 
     @classmethod
     def with_graph_engine(cls, graph_engine: GraphEngine) -> CollectionGraph | None:
@@ -94,6 +99,10 @@ class ITLBRateGraph(RatePerfGraph):
         return ITLBPerfTable
 
     @classmethod
+    def trend_graph(cls) -> type[CollectionGraph] | None:
+        return MemoryUsageGraph
+
+    @classmethod
     def with_graph_engine(cls, graph_engine: GraphEngine) -> CollectionGraph | None:
         perf_table = graph_engine.collection_data.get(cls.perf_table_type())
         if perf_table is not None:
@@ -140,6 +149,10 @@ class TLBFlushRateGraph(RatePerfGraph):
     @classmethod
     def perf_table_type(cls) -> type[PerfCollectionTable]:
         return TLBFlushPerfTable
+
+    @classmethod
+    def trend_graph(cls) -> type[CollectionGraph] | None:
+        return MemoryUsageGraph
 
     @classmethod
     def with_graph_engine(cls, graph_engine: GraphEngine) -> CollectionGraph | None:

@@ -5,6 +5,7 @@ from pwd import getpwnam
 from typing import Callable, Mapping
 
 from data_schema.file_data import FileDataTable
+from data_schema.memory_usage import MemoryUsageTable
 from data_schema.process_metadata import ProcessMetadataTable
 from data_schema.quanta_runtime import QuantaQueuedTable, QuantaRuntimeTable
 from data_schema.schema import (
@@ -27,6 +28,7 @@ table_types: list[type[CollectionTable]] = [
     DTLBPerfTable,
     ITLBPerfTable,
     TLBFlushPerfTable,
+    MemoryUsageTable,
 ]
 
 perf_table_types: Mapping[str, type[PerfCollectionTable]] = {

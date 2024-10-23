@@ -6,8 +6,6 @@
 
 #include <asm-generic/vmlinux.lds.h>
 #include <linux/init_task.h>
-#include <linux/mm.h>
-#include <linux/mm_types.h>
 #include <linux/sched.h>
 #include <uapi/linux/ptrace.h>
 

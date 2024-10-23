@@ -332,6 +332,9 @@ class GraphEngine:
                 self._ax2 = self._ax.twinx()
                 self._ax2.set_ylabel(y_axis)
             self._ax2.plot(x_data, y_data, label=label)
+        elif self._plt is plotext:
+            plotext.plot(x_data, y_data, label=label, yside="right")
+            plotext.ylabel(label=y_axis, yside="right")
 
     def plot_event_as_sec(self, *, ts_us: int | None) -> None:
         if ts_us is None:

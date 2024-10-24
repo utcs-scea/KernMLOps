@@ -31,7 +31,7 @@ make collect
 
 ## Tools
 
-### [Python-3.12]
+### Python-3.12
 
 This is here to make the minimum python version blatant.
 
@@ -89,6 +89,19 @@ Ansible is an automation tool for configuring VMs and baremetal machines.
 
 Vagrant is a tool for managing VMs simply across different backend like VirtualBox
 and libvirt, we recommend using libvirt.
+
+### [perf](https://man7.org/linux/man-pages/man2/perf_event_open.2.html)
+
+Perf counters are used for low-level insights into performance.
+
+When using a new machine it is likely the counters used will be different
+from those already explicitly supported.  Developers can run
+`python python/kernmlops collect perf-list` to get the names, descriptions,
+and umasks of the various hardware events on the new machine. From there
+developers can add the correct `name, umask` pair to an existing counter
+config that already exists.
+
+It is simplest to run the above command inside a container.
 
 ## Dependencies
 

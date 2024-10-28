@@ -1,9 +1,25 @@
 """Abstract definition of a benchmark."""
 
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Literal
+
+from config import ConfigBase
 from data_schema import GraphEngine
 from typing_extensions import Protocol
 
-# TODO(Patrick): Add flush page-cache
+
+@dataclass(frozen=True)
+class GenericBenchmarkConfig(ConfigBase):
+  benchmark: str = "faux"
+  benchmark_dir: str = str(Path.home() / "kernmlops-benchmark")
+  cpus: int = 0
+  transparent_hugepages: Literal["always", "madvise", "never"] = "always"
+
+
+@dataclass(frozen=True)
+class FauxBenchmarkConfig(ConfigBase):
+  pass
 
 
 class Benchmark(Protocol):
@@ -11,6 +27,9 @@ class Benchmark(Protocol):
 
   @classmethod
   def name(cls) -> str: ...
+
+  @classmethod
+  def default_config(cls) -> ConfigBase: ...
 
   def is_configured(self) -> bool:
     """Returns True if the environment has been setup to run the benchmark."""
@@ -40,6 +59,10 @@ class FauxBenchmark(Benchmark):
   @classmethod
   def name(cls) -> str:
     return "faux"
+
+  @classmethod
+  def default_config(cls) -> ConfigBase:
+    return FauxBenchmarkConfig()
 
   def is_configured(self) -> bool:
     return True

@@ -1,7 +1,9 @@
 import subprocess
+from dataclasses import dataclass
 from pathlib import Path
 
 import psutil
+from config import ConfigBase
 from data_schema import FileDataTable, GraphEngine, demote
 
 from kernmlops_benchmark.benchmark import Benchmark
@@ -12,11 +14,20 @@ from kernmlops_benchmark.errors import (
 )
 
 
+@dataclass(frozen=True)
+class LinuxBuildBenchmarkConfig(ConfigBase):
+    pass
+
+
 class LinuxBuildBenchmark(Benchmark):
 
     @classmethod
     def name(cls) -> str:
-        return "linux-build"
+        return "linux_build"
+
+    @classmethod
+    def default_config(cls) -> ConfigBase:
+        return LinuxBuildBenchmarkConfig()
 
     def __init__(self, benchmark_dir: Path, cpus: int | None = None):
         self.benchmark_dir = benchmark_dir / self.name()
@@ -39,7 +50,7 @@ class LinuxBuildBenchmark(Benchmark):
             [
                 "make",
                 "-C",
-                str(self.benchmark_dir / "../linux-kernel"),
+                str(self.benchmark_dir / "../linux_kernel"),
                 f"O={str(self.benchmark_dir)}",
                 "defconfig",
             ],

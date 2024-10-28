@@ -6,7 +6,7 @@ import data_collection
 import data_import
 import data_schema
 from click_default_group import DefaultGroup
-from kernmlops_benchmark import FauxBenchmark, benchmarks
+from kernmlops_benchmark import BenchmarkConfig, FauxBenchmark, benchmarks
 
 from cli import collect
 
@@ -188,9 +188,14 @@ def cli_collect_perf():
 
 
 def main():
+    import dataclasses
+
+    import yaml
+    print(yaml.dump(dataclasses.asdict(BenchmarkConfig()), sort_keys=False))
+    sys.exit(0)
     try:
         # TODO(Patrick): use logging
         cli.main(prog_name="kernmlops")
     except Exception as e:
-        print("Error: ", e)
+        print("Error: ", e.with_traceback())
         sys.exit(1)

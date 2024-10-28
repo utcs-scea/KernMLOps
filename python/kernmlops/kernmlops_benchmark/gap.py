@@ -1,6 +1,9 @@
 import subprocess
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
+from config import ConfigBase
 from data_schema import GraphEngine, demote
 
 from kernmlops_benchmark.benchmark import Benchmark
@@ -11,11 +14,21 @@ from kernmlops_benchmark.errors import (
 )
 
 
+@dataclass(frozen=True)
+class GapBenchmarkConfig(ConfigBase):
+  gap_benchmark: Literal["pr"] = "pr"
+  trials: int = 2
+
+
 class GapBenchmark(Benchmark):
 
     @classmethod
     def name(cls) -> str:
         return "gap"
+
+    @classmethod
+    def default_config(cls) -> ConfigBase:
+        return GapBenchmarkConfig()
 
     def __init__(self, benchmark_dir: Path, cpus: int | None):
         self.benchmark_dir = benchmark_dir / self.name()

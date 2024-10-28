@@ -1,6 +1,13 @@
+from dataclasses import field, make_dataclass
 from typing import Mapping
 
-from kernmlops_benchmark.benchmark import Benchmark, FauxBenchmark
+from config import ConfigBase
+
+from kernmlops_benchmark.benchmark import (
+    Benchmark,
+    FauxBenchmark,
+    GenericBenchmarkConfig,
+)
 from kernmlops_benchmark.errors import (
     BenchmarkError,
     BenchmarkNotConfiguredError,
@@ -16,8 +23,26 @@ benchmarks: Mapping[str, type[Benchmark]] = {
     GapBenchmark.name(): GapBenchmark,
 }
 
+BenchmarkConfig = make_dataclass(
+    cls_name="BenchmarkConfig",
+    bases=(ConfigBase,),
+    fields=[
+        (
+            "generic",
+            GenericBenchmarkConfig,
+            field(default=GenericBenchmarkConfig()),
+        )
+    ] + [
+        (name, ConfigBase, field(default=benchmark.default_config()))
+        for name, benchmark in benchmarks.items()
+    ],
+    frozen=True,
+)
+
+
 __all__ = [
     "Benchmark",
+    "BenchmarkConfig",
     "BenchmarkError",
     "BenchmarkRunningError",
     "BenchmarkNotConfiguredError",

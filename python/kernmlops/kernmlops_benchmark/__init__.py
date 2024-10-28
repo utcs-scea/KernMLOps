@@ -1,7 +1,7 @@
 from dataclasses import field, make_dataclass
 from typing import Mapping
 
-from config import ConfigBase
+from kernmlops_config import ConfigBase
 
 from kernmlops_benchmark.benchmark import (
     Benchmark,

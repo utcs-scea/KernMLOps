@@ -1,0 +1,12 @@
+---
+benchmark_config:
+  generic:
+    benchmark: faux
+    benchmark_dir: ~/kernmlops-benchmark
+    cpus: 0
+    transparent_hugepages: always
+  faux: {}
+  linux_build: {}
+  gap:
+    gap_benchmark: pr
+    trials: 2

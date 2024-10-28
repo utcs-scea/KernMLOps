@@ -1,18 +1,17 @@
 """Abstract definition of a benchmark."""
 
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Literal
 
-from config import ConfigBase
 from data_schema import GraphEngine
+from kernmlops_config import ConfigBase
 from typing_extensions import Protocol
 
 
 @dataclass(frozen=True)
 class GenericBenchmarkConfig(ConfigBase):
   benchmark: str = "faux"
-  benchmark_dir: str = str(Path.home() / "kernmlops-benchmark")
+  benchmark_dir: str = "~/kernmlops-benchmark"
   cpus: int = 0
   transparent_hugepages: Literal["always", "madvise", "never"] = "always"
 

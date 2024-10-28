@@ -3,14 +3,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
-from config import ConfigBase
 from data_schema import GraphEngine, demote
+from kernmlops_config import ConfigBase
 
 from kernmlops_benchmark.benchmark import Benchmark
 from kernmlops_benchmark.errors import (
-    BenchmarkNotInCollectionData,
-    BenchmarkNotRunningError,
-    BenchmarkRunningError,
+  BenchmarkNotInCollectionData,
+  BenchmarkNotRunningError,
+  BenchmarkRunningError,
 )
 
 

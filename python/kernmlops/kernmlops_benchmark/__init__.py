@@ -1,8 +1,6 @@
 from dataclasses import field, make_dataclass
 from typing import Mapping
 
-from kernmlops_config import ConfigBase
-
 from kernmlops_benchmark.benchmark import (
     Benchmark,
     FauxBenchmark,
@@ -16,6 +14,7 @@ from kernmlops_benchmark.errors import (
 )
 from kernmlops_benchmark.gap import GapBenchmark
 from kernmlops_benchmark.linux_build import LinuxBuildBenchmark
+from kernmlops_config import ConfigBase
 
 benchmarks: Mapping[str, type[Benchmark]] = {
     FauxBenchmark.name(): FauxBenchmark,

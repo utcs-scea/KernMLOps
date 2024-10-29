@@ -87,25 +87,21 @@ collect-raw:
 collect-data:
 	@python python/kernmlops collect -v \
 	-p ${COLLECTION_POLL_RATE} \
-	-d ${BENCHMARK_DIR} \
 	--benchmark ${COLLECTION_BENCHMARK}
 
 benchmark-gap:
 	@python python/kernmlops collect -v \
 	-p ${COLLECTION_POLL_RATE} \
-	-d ${BENCHMARK_DIR} \
 	--benchmark gap
 
 benchmark-linux-build:
 	@python python/kernmlops collect -v \
 	-p ${COLLECTION_POLL_RATE} \
-	-d ${BENCHMARK_DIR} \
 	--benchmark linux-build
 
 benchmark-linux-build-baseline:
 	@python python/kernmlops collect -v \
 	-p ${COLLECTION_POLL_RATE} \
-	-d ${BENCHMARK_DIR} \
 	--no-hooks \
 	--benchmark linux-build
 

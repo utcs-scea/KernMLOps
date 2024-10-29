@@ -8,12 +8,11 @@ import data_collection
 import data_import
 import data_schema
 import yaml
+from cli import collect
+from cli.config import KernmlopsConfig
 from click_default_group import DefaultGroup
 from kernmlops_benchmark import benchmarks
 from kernmlops_config import DEFAULT_CONFIG_FILE
-
-from cli import collect
-from cli.config import KernmlopsConfig
 
 
 @click.group()

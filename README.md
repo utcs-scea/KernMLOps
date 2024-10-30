@@ -20,10 +20,11 @@ bash scripts/setup-benchmarks/setup-gap.sh
 # On ubuntu: apt install linux-headers-$(uname -r)
 # On redhat: dnf install kernel-devel kernel-headers
 
-# Run default benchmark and collect data for it inside docker
-make collect
 # Run data collection inside docker until manually terminated via Ctrl+C
-make collect-raw
+make collect
+# Run gap benchmark inside docker
+make docker
+make benchmark-gap
 ```
 
 ## Tools

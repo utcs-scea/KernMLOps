@@ -2,8 +2,9 @@
 benchmark_config:
   generic:
     benchmark: faux
-    benchmark_dir: ~/kernmlops-benchmark
+    benchmark_dir: ''
     cpus: 0
+    skip_clear_page_cache: false
     transparent_hugepages: always
   faux: {}
   linux_build: {}

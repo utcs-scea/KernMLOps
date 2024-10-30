@@ -86,9 +86,8 @@ def cli_collect_data(
     bpf_programs = [] if no_hooks else data_collection.bpf.hooks()
     config_overrides = yaml.safe_load(config_file.read_text())
     config = KernmlopsConfig().merge(config_overrides)
-    if benchmark_name is None:
-        benchmark_name = config.benchmark_config.generic.benchmark
-    benchmark = benchmarks[benchmark_name](config.benchmark_config)  # pyright: ignore [reportCallIssue]
+    name = benchmark_name if benchmark_name else str(config.benchmark_config.generic.benchmark)
+    benchmark = benchmarks[name].from_config(config.benchmark_config)
     collect.run_collect(
         data_dir=output_dir,
         benchmark=benchmark,

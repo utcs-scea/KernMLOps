@@ -109,7 +109,7 @@ benchmark-gap:
 benchmark-linux-build:
 	@python python/kernmlops collect -v \
 	-c ${KERNMLOPS_CONFIG_FILE} \
-	--benchmark linux-build
+	--benchmark linux_build
 
 dump:
 	@python python/kernmlops collect dump

@@ -349,7 +349,17 @@ class TLBPerfBPFHook(BPFProgram):
       ),
       fn_name=b"dtlb_misses_on",
       sample_freq=1000,
+      cpu=0,
     )
+    group_fds = self.bpf.open_perf_events[(
+      PerfType.HW_CACHE,
+      PerfHWCacheConfig.config(
+        cache=PerfHWCacheConfig.Cache.PERF_COUNT_HW_CACHE_DTLB,
+        op=PerfHWCacheConfig.Op.PERF_COUNT_HW_CACHE_OP_READ,
+        result=PerfHWCacheConfig.Result.PERF_COUNT_HW_CACHE_RESULT_MISS,
+      ),
+    )]
+    print(group_fds.items())
     self.bpf.attach_perf_event(
       ev_type=PerfType.HW_CACHE,
       ev_config=PerfHWCacheConfig.config(
@@ -359,6 +369,8 @@ class TLBPerfBPFHook(BPFProgram):
       ),
       fn_name=b"itlb_misses_on",
       sample_freq=1000,
+      cpu=0,
+      group_fd=group_fds[0],
     )
     for name, custom_hw_config in self.loaded_custom_hw_event_configs.items():
       self.bpf.attach_perf_event(

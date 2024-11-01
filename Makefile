@@ -106,6 +106,11 @@ benchmark-gap:
 	-c ${KERNMLOPS_CONFIG_FILE} \
 	--benchmark gap
 
+benchmark-mongodb:
+	@python python/kernmlops collect -v \
+	-c ${KERNMLOPS_CONFIG_FILE} \
+	--benchmark mongodb
+
 benchmark-linux-build:
 	@python python/kernmlops collect -v \
 	-c ${KERNMLOPS_CONFIG_FILE} \
@@ -183,6 +188,15 @@ docker:
 	${IMAGE_NAME}:${VERSION} \
 	${CONTAINER_CMD} || true
 
+# Benchmark Installation commands
+
+install-ycsb:
+	@echo "Installing ycsb..."
+	@source scripts/setup-benchmarks/install_ycsb.sh
+
+install-mongodb:
+	@echo "Installing mongodb benchmark..."
+	@source scripts/setup-benchmarks/install_mongodb.sh
 
 # Miscellaneous commands
 clean-docker-images:

@@ -1,6 +1,6 @@
 import subprocess
 from dataclasses import dataclass
-from typing import Literal, cast
+from typing import cast
 
 from data_schema import GraphEngine, demote
 from kernmlops_benchmark.benchmark import Benchmark, GenericBenchmarkConfig
@@ -13,35 +13,33 @@ from kernmlops_config import ConfigBase
 
 
 @dataclass(frozen=True)
-class GapBenchmarkConfig(ConfigBase):
-  gap_benchmark: Literal["pr"] = "pr"
-  trials: int = 2
+class MongoDbConfig(ConfigBase):
+  operation_count: int = 1000000
+  readProportion: float = 0.25
+  updateProportion: float = 0.75
 
 
-class GapBenchmark(Benchmark):
+class MongoDbBenchmark(Benchmark):
 
     @classmethod
     def name(cls) -> str:
-        return "gap"
+        return "mongodb"
 
     @classmethod
     def default_config(cls) -> ConfigBase:
-        return GapBenchmarkConfig()
+        return MongoDbConfig()
 
     @classmethod
     def from_config(cls, config: ConfigBase) -> "Benchmark":
         generic_config = cast(GenericBenchmarkConfig, getattr(config, "generic"))
-        gap_config = cast(GapBenchmarkConfig, getattr(config, cls.name()))
-        return GapBenchmark(generic_config=generic_config, config=gap_config)
+        mongodb_config = cast(MongoDbConfig, getattr(config, cls.name()))
+        return MongoDbBenchmark(generic_config=generic_config, config=mongodb_config)
 
-    def __init__(self, *, generic_config: GenericBenchmarkConfig, config: GapBenchmarkConfig):
+    def __init__(self, *, generic_config: GenericBenchmarkConfig, config: MongoDbConfig):
         self.generic_config = generic_config
         self.config = config
-        self.benchmark_dir = self.generic_config.get_benchmark_dir() / self.name()
+        self.benchmark_dir = self.generic_config.get_benchmark_dir() / "ycsb"
         self.process: subprocess.Popen | None = None
-
-    def is_configured(self) -> bool:
-        return self.benchmark_dir.is_dir()
 
     def setup(self) -> None:
         if self.process is not None:
@@ -54,11 +52,22 @@ class GapBenchmark(Benchmark):
 
         self.process = subprocess.Popen(
             [
-                str(self.benchmark_dir / self.config.gap_benchmark),
-                "-f",
-                str(self.benchmark_dir / "graphs" / "kron25.sg"),
-                "-n",
-                str(self.config.trials),
+                f"{self.benchmark_dir}/ycsb-0.17.0/bin/ycsb",
+                "run",
+                "mongodb",
+                "-s",
+                "-P",
+                f"{self.benchmark_dir}/ycsb-0.17.0/workloads/workloada",
+                "-p",
+                f"operationcount={self.config.operation_count}",
+                "-p",
+                "mongodb.url=mongodb://localhost:27017/ycsb",
+                "-p",
+                f"readproportion={self.config.readProportion}",
+                "-p",
+                f"updateproportion={self.config.updateProportion}",
+                "-p",
+                "mongodb.writeConcern=acknowledged"
             ],
             preexec_fn=demote(),
             stdout=subprocess.DEVNULL,
@@ -83,4 +92,3 @@ class GapBenchmark(Benchmark):
     def plot_events(cls, graph_engine: GraphEngine) -> None:
         if graph_engine.collection_data.benchmark != cls.name():
             raise BenchmarkNotInCollectionData()
-        # TODO(Patrick): plot when a trial starts/ends

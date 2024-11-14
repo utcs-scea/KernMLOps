@@ -2,6 +2,7 @@ import os
 import subprocess
 from dataclasses import dataclass
 from enum import Enum
+from fcntl import ioctl
 from functools import cache
 from pathlib import Path
 from typing import Any, Final, Mapping, Protocol
@@ -10,6 +11,12 @@ import polars as pl
 from bcc import BPF, PerfType
 from data_collection.bpf_instrumentation.bpf_hook import BPFProgram
 from data_schema import CollectionTable, perf_table_types
+
+# https://stackoverflow.com/questions/14626395/how-to-properly-convert-a-c-ioctl-call-to-a-python-fcntl-ioctl-call
+# https://github.com/torvalds/linux/blob/0a9b9d17f3a781dea03baca01c835deaa07f7cc3/include/uapi/linux/perf_event.h#L551
+PERF_EVENT_IOC_ENABLE: Final[int] = ord('$') << (4*2) | 0
+PERF_EVENT_IOC_DISABLE: Final[int] = ord('$') << (4*2) | 1
+PERF_IOC_FLAG_GROUP: Final[int] = 1
 
 
 class PerfHWCacheConfig:
@@ -399,6 +406,18 @@ class TLBPerfBPFHook(BPFProgram):
       )
     for event_name in self._perf_data.keys():
       self.bpf[event_name].open_perf_buffer(self._perf_handler(event_name), page_cnt=64)
+
+  def disable_counters(self) -> None:
+    if self.group_fds is None:
+      return
+    for _, group_fd in self.group_fds.items():
+      ioctl(group_fd, PERF_EVENT_IOC_DISABLE, PERF_IOC_FLAG_GROUP)
+
+  def enable_counters(self) -> None:
+    if self.group_fds is None:
+      return
+    for _, group_fd in self.group_fds.items():
+      ioctl(group_fd, PERF_EVENT_IOC_ENABLE, PERF_IOC_FLAG_GROUP)
 
   def poll(self):
     self.bpf.perf_buffer_poll()

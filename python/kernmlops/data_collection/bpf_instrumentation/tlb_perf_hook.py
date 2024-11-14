@@ -9,7 +9,7 @@ from typing import Any, Final, Mapping, Protocol
 
 import polars as pl
 from bcc import BPF, PerfType
-from data_collection.bpf_instrumentation.bpf_hook import BPFProgram
+from data_collection.bpf_instrumentation.bpf_hook import POLL_TIMEOUT_MS, BPFProgram
 from data_schema import CollectionTable, perf_table_types
 
 # https://stackoverflow.com/questions/14626395/how-to-properly-convert-a-c-ioctl-call-to-a-python-fcntl-ioctl-call
@@ -420,7 +420,7 @@ class TLBPerfBPFHook(BPFProgram):
       ioctl(group_fd, PERF_EVENT_IOC_ENABLE, PERF_IOC_FLAG_GROUP)
 
   def poll(self):
-    self.bpf.perf_buffer_poll()
+    self.bpf.perf_buffer_poll(timeout=POLL_TIMEOUT_MS)
 
   def close(self):
     self.bpf.cleanup()

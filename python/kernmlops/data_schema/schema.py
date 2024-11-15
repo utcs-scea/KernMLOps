@@ -51,6 +51,12 @@ class CollectionTable(Protocol):
     def schema(cls) -> pl.Schema: ...
 
     @classmethod
+    def from_schema(cls) -> "CollectionTable":
+        return cls.from_df(
+            table=pl.DataFrame(data=None, schema=cls.schema())
+        )
+
+    @classmethod
     def from_df(cls, table: pl.DataFrame) -> "CollectionTable": ...
 
     @classmethod

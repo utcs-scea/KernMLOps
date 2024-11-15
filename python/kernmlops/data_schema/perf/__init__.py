@@ -16,4 +16,7 @@ __all__ = [
   "perf_table_types",
   "CustomHWEventID",
   "PerfCollectionTable",
+  "DTLBPerfTable",
+  "ITLBPerfTable",
+  "TLBFlushPerfTable",
 ]

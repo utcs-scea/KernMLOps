@@ -37,12 +37,19 @@ make collect
 For this example you need to open two terminals.
 
 In Terminal 1 navigate to your cloned version of `KernMLOps`.
-Start the docker container and begin `collect-raw`.
 
 ```shell
 make docker
 make collect-raw
 ```
+
+You are looking for output that looks like this:
+
+```shell
+Started benchmark faux
+```
+
+This tells you that the probes have been inserted and data collection has begun.
 
 In Terminal 2, start the application.
 You will eventually need the pid,
@@ -61,7 +68,29 @@ Then in Terminal 1 press `CTRL+C`.
 Now the data should be collected in ...
 Now in Terminal 1 you can exit the docker container,
 enter python and import the last data collection.
-<!-- TODO(pkenney) Add instructions for importing data to python--!>
+
+The data is now under `data/curated` in the `KernMLOps` directory.
+
+You can import that to python by doing the following:
+Note that you need at least Python 3.12 (as is provided in the container)
+Change to the `python/kernmlops/` directory
+
+```python3
+python3
+>>> import data_import as di
+>>> r = di.read_parquet_dir("<path-to-data-curated>")
+>>> r.keys()
+```
+
+In this case `r` is a dictionary containing a dataframe per key.
+If we want to explore for example the `tlb_misses` for our program
+we can do the following:
+
+```python3
+>>> dtlb_data = r['dtlb_misses']
+>>> import polars as pl
+>>> dtlb_data.filter(pl.col("tgid") == <pid for program>)
+```
 
 ## Tools
 

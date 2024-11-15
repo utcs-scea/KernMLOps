@@ -76,6 +76,7 @@ Note that you need at least Python 3.12 (as is provided in the container)
 Change to the `python/kernmlops/` directory
 
 ```python3
+cd python/kernmlops/
 python3
 >>> import data_import as di
 >>> r = di.read_parquet_dir("<path-to-data-curated>")
@@ -83,7 +84,7 @@ python3
 ```
 
 In this case `r` is a dictionary containing a dataframe per key.
-If we want to explore for example the `tlb_misses` for our program
+If we want to explore for example the `dtlb_misses` for our program
 we can do the following:
 
 ```python3

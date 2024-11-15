@@ -74,5 +74,105 @@ Modif-06 : 0x07 : PMU : [intx] : monitor only inside transactional memory region
 Modif-07 : 0x08 : PMU : [intxcp] : do not count occurrences inside aborted transactional memory region (boolean)
 ```
 
-So now we add this to:
-<!-- TODO(pkenney) add --!>
+So create your own file in `python/kernmlops/data_schema/perf/`
+Here we will make one called `resource_stalls.py`
+
+```shell
+vi python/kernmlops/data_schema/perf/
+```
+
+Copy in the following and change anything in angled brackets
+to what you want it to be in your code:
+
+```python3
+import polars as pl
+from bcc import PerfType
+from data_schema.perf.perf_schema import (
+    CustomHWEventID,
+    PerfCollectionTable,
+    PerfHWCacheConfig,
+)
+from data_schema.schema import CollectionGraph
+
+class <New Class Prefix>PerfTable(PerfCollectionTable):
+
+    @classmethod
+    def name(cls) -> str:
+        return "<Intended Column Name>" # cosmetic
+
+    @classmethod
+    def ev_type(cls) -> int:
+        return PerfType.RAW
+
+    @classmethod
+    def ev_config(cls) -> int:
+        return 0
+
+    @classmethod
+    def hw_ids(cls) -> list[CustomHWEventID]:
+        return [
+            CustomHWEventID(
+                name="<'Name' in above perf list entry>",
+                umask="<UMask description in above perf list entry ex: ANY/ALL>"
+            ),
+        ]
+
+    @classmethod
+    def component_name(cls) -> str:
+        return "<Desired Component Name>" # cosmetic
+
+    @classmethod
+    def measured_event_name(cls) -> str:
+        return "<Desired Measured Event Name>" # cosmetic
+
+    @classmethod
+    def from_df(cls, table: pl.DataFrame) -> "<New Class Prefix>PerfTable":
+        return <New Class Prefix>PerfTable(
+            table=table.cast(cls.schema(), strict=True)
+        )  # pyright: ignore [reportArgumentType]
+
+    def __init__(self, table: pl.DataFrame):
+        self._table = table
+
+    @property
+    def table(self) -> pl.DataFrame:
+        return self._table
+
+    def filtered_table(self) -> pl.DataFrame:
+        return self.table
+
+    def graphs(self) -> list[type[CollectionGraph]]:
+        return []
+```
+
+For the example we have been following we used:
+
+| String to Replace | Replacement |
+| ------ | -----|
+| `<New Class Prefix>` | `ResourceStall` |
+| `<New File Name>` | `resource_stalls` |
+| `<Intended Column Name>` | `resource_stalls` |
+| `<'Name' in above perf list entry>` | `RESOURCE_STALLS` |
+| `<UMask description in above perf list entry ex: ANY/ALL>` | `ANY`|
+| `<Desired Component Name>` | `Re-Order Buffer` |
+| `<Desired Measured Event Name` | `Stalls` |
+
+Finally, add the new perf collection table to `perf_table_types`
+in `python/kernmlops/data_schema/perf/__init__.py`:
+
+```python3
+from data_schema.perf.<New File Name> import <New Class Prefix>PerfTable
+
+perf_table_types: Mapping[str, type[PerfCollectionTable]] = {
+    DTLBPerfTable.name(): DTLBPerfTable,
+    ITLBPerfTable.name(): ITLBPerfTable,
+    TLBFlushPerfTable.name(): TLBFlushPerfTable,
+    <New Class Prefix>PerfTable.name(): <New Class Prefix>PerfTable,
+}
+```
+
+## Check to see if it worked
+
+Go through the [../README.md](Readme's) section on data collection to python.
+See if a key on the dictionary of dataframes exists
+and has the same name as your `<Intended Column Name>`

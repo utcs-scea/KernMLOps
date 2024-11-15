@@ -32,6 +32,37 @@ make benchmark-gap
 make collect
 ```
 
+## Capturing Data -> Processing in Python
+
+For this example you need to open two terminals.
+
+In Terminal 1 navigate to your cloned version of `KernMLOps`.
+Start the docker container and begin `collect-raw`.
+
+```shell
+make docker
+make collect-raw
+```
+
+In Terminal 2, start the application.
+You will eventually need the pid,
+the terminal can get you that as shown below.
+
+```shell
+./app arg1 arg2 arg3 &
+echo $!
+wait
+```
+
+The result of the command should be a pid.
+The pid can be used later to filter results.
+When the wait call finishes the program `app` has exited.
+Then in Terminal 1 press `CTRL+C`.
+Now the data should be collected in ...
+Now in Terminal 1 you can exit the docker container,
+enter python and import the last data collection.
+<!-- TODO(pkenney) Add instructions for importing data to python--!>
+
 ## Tools
 
 ### Python-3.12

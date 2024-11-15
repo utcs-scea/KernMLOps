@@ -3,7 +3,7 @@ from pathlib import Path
 import polars as pl
 
 
-def read_parquet_dir(data_dir: Path | str, benchmark_name: str | None) -> dict[str, pl.DataFrame]:
+def read_parquet_dir(data_dir: Path | str, *, benchmark_name: str | None = None) -> dict[str, pl.DataFrame]:
     if isinstance(data_dir, str):
         data_dir = Path(data_dir)
     kernmlops_dfs = dict[str, pl.DataFrame]()

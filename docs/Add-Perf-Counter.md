@@ -78,7 +78,7 @@ So create your own file in `python/kernmlops/data_schema/perf/`
 Here we will make one called `resource_stalls.py`
 
 ```shell
-vi python/kernmlops/data_schema/perf/
+vi python/kernmlops/data_schema/perf/resource_stalls.py
 ```
 
 Copy in the following and change anything in angled brackets

@@ -63,9 +63,9 @@ machine and this process may need to be repeated if a new machine
 does not have any of the counters already identified.
 
 Once the name and umask are in hand, add a simple metadata class to
-`python/kernmlops/data_collection/bpf_instrumentation/tlb_perf_hook.py`.
+`python/kernmlops/data_collection/bpf_instrumentation/tlb_perf_hook.py`
 subclassing the `CustomHWEvent` Protocol, multiple `CustomHWEventID`
-can be returned as `hw_ids` to support multiple machines.
+can be returned as a list to support multiple machines.
 
 ### Adding a Data Schema
 
@@ -114,6 +114,9 @@ is doing what it is expected to.
 
 In the CollectionTable Protocol, there is a function that returns a list
 of graphs that will use and plot its data.
+
+A graph can be made for a CollectionTable by subclassing the `CollectionGraph`
+found in `python/kernmlops/data_schema/schema.py`.
 
 ### Adding Graphs for Perf Counters
 

@@ -23,7 +23,7 @@ jobs:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
           restore-keys: |
-        ${{ runner.os }}-pip-
+            ${{ runner.os }}-pip-
       - name: Install Dependencies 📦
         run: pip install -r requirements.txt
       - name: Run Ruff Linter 🚨

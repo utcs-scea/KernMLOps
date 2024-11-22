@@ -7,12 +7,23 @@ on:
     pull_request:
       - '**'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout 🛎️
         uses: actions/checkout@v4
+      - name: Cache Dependencies 📂
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+        ${{ runner.os }}-pip-
       - name: Install Dependencies 📦
         run: pip install -r requirements.txt
       - name: Run Ruff Linter 🚨

@@ -31,6 +31,6 @@ jobs:
         run: python -m venv ./.venv && . ./.venv/bin/activate && pip install -r requirements.txt
         if: steps.cache-venv.outputs.cache-hit != 'true'
       - name: Install BCC tools and Kernel Headers 🐧
-        run: sudo apt-get update && sudo apt-get install -y bcc-tools python3-bcc linux-headers-$(uname -r)
+        run: sudo apt-get update && sudo apt-get install -y bpfcc-tools linux-headers-$(uname -r)
       - name: Run Ruff Linter 🚨
         run: . ./.venv/bin/activate && make lint

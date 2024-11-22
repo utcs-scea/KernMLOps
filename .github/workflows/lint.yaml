@@ -28,4 +28,3 @@ jobs:
         run: pip install -r requirements.txt
       - name: Run Ruff Linter 🚨
         run: make lint
-

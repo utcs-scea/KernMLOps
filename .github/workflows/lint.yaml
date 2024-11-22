@@ -29,5 +29,7 @@ jobs:
         if: steps.cache-venv.outputs.cache-hit != 'true'
       - name: Activate venv 🐍
         run: . ./.venv/bin/activate
+      - name: Activate venv
+        run: which python
       - name: Run Ruff Linter 🚨
         run: make lint

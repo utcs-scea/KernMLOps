@@ -27,6 +27,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-venv-
       # Install python dependencies only if cache was not hit
+      # `--system-site-packages` argument is used to allow access to system site packages (e.g., bcc)
       - name: Install Dependencies 📦
         run: python -m venv --system-site-packages ./.venv && . ./.venv/bin/activate && pip install -r requirements.txt
         if: steps.cache-venv.outputs.cache-hit != 'true'

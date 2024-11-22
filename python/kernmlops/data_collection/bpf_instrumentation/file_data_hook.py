@@ -45,7 +45,9 @@ class FileDataBPFHook(BPFProgram):
     self.bpf_text = bpf_text.replace('FILTER', '0')
     self.file_open_data = list[FileOpenData]()
 
-  def load(self, collection_id: str):
+  def load(
+        
+        self, collection_id: str):
     self.collection_id = collection_id
     self.bpf = BPF(text = self.bpf_text)
     self.bpf.attach_kprobe(event=b"vfs_create", fn_name=b"trace_create")

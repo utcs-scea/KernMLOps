@@ -13,7 +13,6 @@ from kernmlops_config import ConfigBase
 
 
 def poll_instrumentation(
-
   benchmark: Benchmark,
   bpf_programs: list[data_collection.bpf.BPFProgram],
   poll_rate: float = .5,

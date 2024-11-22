@@ -30,7 +30,5 @@ jobs:
       - name: Install Dependencies 📦
         run: python -m venv ./.venv && . ./.venv/bin/activate && pip install -r requirements.txt
         if: steps.cache-venv.outputs.cache-hit != 'true'
-      - name: Install BCC tools and Kernel Headers 🐧
-        run: sudo apt-get update && sudo apt-get install -y zip curl build-essential cmake git bpfcc-tools
       - name: Run Ruff Linter 🚨
-        run: . ./.venv/bin/activate && make lint
+        run: . ./.venv/bin/activate && which python && python --version && make lint

@@ -20,11 +20,14 @@ jobs:
       - name: Cache Dependencies 📂
         uses: actions/cache@v3
         with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          path: ~/.venv/
+          key: ${{ runner.os }}-venv-${{ hashFiles('**/requirements.txt') }}
           restore-keys: |
-            ${{ runner.os }}-pip-
+            ${{ runner.os }}-venv-
       - name: Install Dependencies 📦
-        run: pip install -r requirements.txt
+        run: python -m venv ./.venv && . ./.venv/bin/activate && pip install -r requirements.txt
+        if: steps.cache-venv.outputs.cache-hit != 'true'
+      - name: Activate venv 🐍
+        run: . ./.venv/bin/activate
       - name: Run Ruff Linter 🚨
         run: make lint

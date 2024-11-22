@@ -27,9 +27,5 @@ jobs:
       - name: Install Dependencies 📦
         run: python -m venv ./.venv && . ./.venv/bin/activate && pip install -r requirements.txt
         if: steps.cache-venv.outputs.cache-hit != 'true'
-      - name: Activate venv 🐍
-        run: . ./.venv/bin/activate
-      - name: Activate venv
-        run: which python
       - name: Run Ruff Linter 🚨
-        run: make lint
+        run: . ./.venv/bin/activate && make lint

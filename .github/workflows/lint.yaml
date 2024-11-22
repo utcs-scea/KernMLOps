@@ -28,4 +28,4 @@ jobs:
         run: python -m venv ./.venv && . ./.venv/bin/activate && pip install -r requirements.txt
         if: steps.cache-venv.outputs.cache-hit != 'true'
       - name: Run Ruff Linter 🚨
-        run: . ./.venv/bin/activate && make lint
+        run: . ./.venv/bin/activate && make hooks && make lint

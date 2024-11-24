@@ -174,3 +174,6 @@ tmp
 data
 
 overrides.yaml
+module/kbuild
+module/build
+module/kmod

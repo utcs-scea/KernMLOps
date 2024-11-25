@@ -3,9 +3,9 @@ name: Build
 on:
   push:
     branches:
-      - main
+      - [ main ]
     pull_request:
-      - '**'
+      - [ main ]
 
 # Only the latest workflow run is allowed to run for each PR / branch
 concurrency:

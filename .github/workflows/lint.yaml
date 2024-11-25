@@ -33,3 +33,7 @@ jobs:
         if: steps.cache-venv.outputs.cache-hit != 'true'
       - name: Run Ruff Linter 🚨
         run: . ./.venv/bin/activate && make lint
+      - name: Install pre-commit hooks
+        run: make hooks
+      - name: Run pre-commit hooks
+        run: make pre-commit

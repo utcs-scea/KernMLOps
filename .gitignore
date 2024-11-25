@@ -177,3 +177,13 @@ overrides.yaml
 module/kbuild
 module/build
 module/kmod
+module/mnt
+module/*.img
+*.mod*
+*.ko
+*.ko*
+*.o
+*.o*
+*.symvers
+*.symvers*
+*.order

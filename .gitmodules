@@ -1,7 +1,3 @@
-[submodule "module/linux"]
-	path = module/linux
-	url = git@github.com:utcs-scea/linux.git
-  branch = kernmlops
 [submodule "external/linux"]
 	path = external/linux
 	url = git@github.com:utcs-scea/linux.git

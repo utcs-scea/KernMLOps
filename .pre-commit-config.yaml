@@ -13,7 +13,7 @@ repos:
     rev: v1.5.5
     hooks:
       - id: forbid-tabs
-        exclude: scripts/|Makefile|.*\.mk$
+        exclude: scripts/|Makefile|.*\.mk$|module/fstore/
       - id: remove-tabs
         exclude: scripts/|Makefile|.*\.mk$
         args: [--whitespaces-count, '2']

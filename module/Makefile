@@ -3,37 +3,42 @@ KBUILD ?= $(shell pwd)/kbuild
 KERNEL ?= $(shell pwd)/linux
 MODULE ?= $(shell pwd)/kmod
 
+SUDO ?= ""
+
 all: fstore/fstore.ko
 
 echo:
 	echo ${KBUILD}
 	echo ${KERNEL}
 	echo ${MODULE}
+	echo ${SUDO}
 
-/tmp/fstore_dirs:
+.tmp/fstore_dirs:
+	mkdir -p .tmp
 	mkdir -p ${KBUILD}
 	mkdir -p ${MODULE}
 	touch $@
 
 ${KBUILD}/.config: config/config-6.12.0+
-	+yes ""| ${MAKE} CC=clang -C ${KERNEL} O=${KBUILD} config
+	cp $< $@
+	+yes ""| ${MAKE} -C ${KERNEL} O=${KBUILD} olddefconfig
 
 ${KBUILD}/vmlinux: ${KBUILD}/.config
-	+${MAKE} CC=clang -C ${KBUILD}
+	+${MAKE} -C ${KBUILD}
 
-${MODULE}/lib: ${KBUILD}/vmlinux /tmp/fstore_dirs
-	+${MAKE} CC=clang -C ${KBUILD} INSTALL_MOD_PATH=${MODULE} modules_install
+${MODULE}/lib: ${KBUILD}/vmlinux .tmp/fstore_dirs
+	+${SUDO} ${MAKE} -C ${KBUILD} INSTALL_MOD_PATH=${MODULE} INSTALL_MOD_STRIP=1 modules_install
 
 fstore/fstore.ko: ${KBUILD}/vmlinux ${MODULE}/lib fstore/fstore.c
-	+${MAKE} CC=clang -C fstore
+	+${MAKE} -C fstore
 
-/tmp/fstore_copyin: fstore/fstore.ko
+.tmp/fstore_copyin: fstore/fstore.ko
 	sudo guestmount -a ubuntu.img -m /dev/sda3 mnt
 	sudo cp $< mnt/home/kermit/
 	sudo fusermount -u mnt/
 	touch $@
 
-/tmp/fstore_test: test/
+.tmp/fstore_test: test/
 	sudo guestmount -a ubuntu.img -m /dev/sda3 mnt
 	sudo cp -R $< mnt/home/kermit/
 	sudo fusermount -u mnt/

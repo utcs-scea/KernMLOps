@@ -1,8 +1,9 @@
 obj-m += fstore.o
 PWD := $(CURDIR)
+KBUILD ?= $(PWD)/../kbuild
 
 all:
-	$(MAKE) -C $(PWD)/../kbuild M=$(PWD) modules
+	$(MAKE) -C ${KBUILD} M=${PWD} modules
 
 clean:
-	$(MAKE) -C $(PWD)/../kbuild M=$(PWD) clean
+	$(MAKE) -C ${KBUILD} M=${PWD} clean

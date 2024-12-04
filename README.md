@@ -26,7 +26,7 @@ bash scripts/setup-benchmarks/setup-gap.sh
 make install-ycsb
 
 # Installs MongoDB benchmark
-make install-mongodb
+make setup-mongodb
 
 # Ensure you have installed your kernel's development headers
 # On ubuntu: apt install linux-headers-$(uname -r)
@@ -41,8 +41,8 @@ make benchmark-gap
 # Run yaml configured data collection inside docker
 make collect
 # Run mongodb benchmark inside docker
-make start-mongodb-server # Starts server if not already running. Does not need to be run if it is already running.
 make docker
+make load-mongodb # Run this command only the first time you set up the MongoDB benchmark
 make benchmark-mongodb
 
 ```

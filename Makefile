@@ -56,6 +56,7 @@ INTERACTIVE ?= i
 # Benchmarking variables
 COLLECTION_BENCHMARK ?= faux
 BENCHMARK_DIR ?= /home/${UNAME}/kernmlops-benchmark
+YCSB_BENCHMARK_DIR ?= ${BENCHMARK_DIR}/ycsb
 
 # Provisioning variables
 PROVISIONING_USER ?= ${UNAME}
@@ -106,10 +107,23 @@ benchmark-gap:
 	-c ${KERNMLOPS_CONFIG_FILE} \
 	--benchmark gap
 
+start-mongodb:
+	mkdir -p "$(YCSB_BENCHMARK_DIR)/mongo_db"
+	@mongod --dbpath "$(YCSB_BENCHMARK_DIR)/mongo_db" --fork --logpath /var/log/mongodb.log || { echo "Error is expected, just means that the server was already running"; true; }
+
 benchmark-mongodb:
+	@${MAKE} start-mongodb
 	@python python/kernmlops collect -v \
-	-c ${KERNMLOPS_CONFIG_FILE} \
-	--benchmark mongodb
+		-c ${KERNMLOPS_CONFIG_FILE} \
+		--benchmark mongodb
+
+load-mongodb:
+	@echo "Loading MongoDB benchmark"
+	@${MAKE} start-mongodb
+	@python $(YCSB_BENCHMARK_DIR)/ycsb-0.17.0/bin/ycsb load mongodb -s \
+		-P "$(YCSB_BENCHMARK_DIR)/ycsb-0.17.0/workloads/workloada" \
+		-p recordcount=1000000 \
+		-p mongodb.url=mongodb://localhost:27017/ycsb
 
 benchmark-linux-build:
 	@python python/kernmlops collect -v \
@@ -169,8 +183,8 @@ docker:
 		echo "Kernel dev headers not installed: ${KERNEL_DEV_MODULES_DIR}" && exit 1; \
 	fi
 
-	@HOST_IP=$$(python3 -c "import socket; print(socket.gethostbyname(socket.gethostname()))") && \
-	docker --context ${CONTAINER_CONTEXT} run --rm \
+	@mkdir -p ${BENCHMARK_DIR}
+	@docker --context ${CONTAINER_CONTEXT} run --rm \
 	-v ${SRC_DIR}/:${CONTAINER_SRC_DIR} \
 	-v ${KERNEL_DEV_HEADERS_DIR}/:${KERNEL_DEV_HEADERS_DIR}:ro \
 	-v ${KERNEL_DEV_MODULES_DIR}/:${KERNEL_DEV_MODULES_DIR}:ro \
@@ -180,7 +194,6 @@ docker:
 	-v /sys/kernel/:/sys/kernel \
 	${KERNEL_DEV_SPECIFIC_HEADERS_MOUNT} \
 	${KERNMLOPS_CONTAINER_MOUNTS} \
-	-e HOST_IP="$$HOST_IP" \
 	${KERNMLOPS_CONTAINER_ENV} \
 	${CONTAINER_CPUSET} \
 	--pid=host \
@@ -194,18 +207,9 @@ install-ycsb:
 	@echo "Installing ycsb..."
 	@source scripts/setup-benchmarks/install_ycsb.sh
 
-install-mongodb:
-	@echo "Installing mongodb benchmark..."
-	@source scripts/setup-benchmarks/install_mongodb.sh
-
-start-mongodb-server:
-	YCSB_BENCHMARK_NAME="ycsb"
-	BENCHMARK_DIR_NAME="kernmlops-benchmark"
-
-	BENCHMARK_DIR="${BENCHMARK_DIR:-$HOME/$BENCHMARK_DIR_NAME}"
-	YCSB_BENCHMARK_DIR="$BENCHMARK_DIR/$YCSB_BENCHMARK_NAME"
-	@mkdir -p ${BENCHMARK_DIR}
-	@{ sudo mongod --dbpath "$YCSB_BENCHMARK_DIR/mongo_db" --bind_ip_all --fork --logpath /var/log/mongodb.log || echo "MongoDB server already running"; }
+setup-mongodb:
+	@echo "Setting up storage for mongodb benchmark..."
+	@source scripts/setup-benchmarks/setup_mongodb_dir.sh
 
 # Miscellaneous commands
 clean-docker-images:

@@ -51,7 +51,6 @@ class GapBenchmark(Benchmark):
     def run(self) -> None:
         if self.process is not None:
             raise BenchmarkRunningError()
-
         self.process = subprocess.Popen(
             [
                 str(self.benchmark_dir / self.config.gap_benchmark),

@@ -1,4 +1,3 @@
-import os
 import subprocess
 from dataclasses import dataclass
 from typing import cast
@@ -54,27 +53,25 @@ class MongoDbBenchmark(Benchmark):
         if self.process is not None:
             raise BenchmarkRunningError()
 
-        command = [
-            f"{self.benchmark_dir}/ycsb-0.17.0/bin/ycsb",
-            "run",
-            "mongodb",
-            "-s",
-            "-P",
-            f"{self.benchmark_dir}/ycsb-0.17.0/workloads/workloada",
-            "-p",
-            f"operationcount={self.config.operation_count}",
-            "-p",
-            f"mongodb.url=mongodb://{os.environ.get('HOST_IP', 'localhost')}:27017/ycsb",
-            "-p",
-            f"readproportion={self.config.read_proportion}",
-            "-p",
-            f"updateproportion={self.config.update_proportion}",
-            "-p",
-            "mongodb.writeConcern=acknowledged"
-        ]
-
         self.process = subprocess.Popen(
-            command,
+            [
+                f"{self.benchmark_dir}/ycsb-0.17.0/bin/ycsb",
+                "run",
+                "mongodb",
+                "-s",
+                "-P",
+                f"{self.benchmark_dir}/ycsb-0.17.0/workloads/workloada",
+                "-p",
+                f"operationcount={self.config.operation_count}",
+                "-p",
+                "mongodb.url=mongodb://localhost:27017/ycsb",
+                "-p",
+                f"readproportion={self.config.read_proportion}",
+                "-p",
+                f"updateproportion={self.config.update_proportion}",
+                "-p",
+                "mongodb.writeConcern=acknowledged"
+            ],
             preexec_fn=demote(),
             stdout=subprocess.DEVNULL,
         )

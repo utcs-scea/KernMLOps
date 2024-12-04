@@ -13,6 +13,7 @@ TEST_BLD = $(patsubst %.cpp,%,$(subst test/,build/,${TEST_SRC}))
 all: fstore/fstore.ko
 
 /tmp/deploy: fstore/fstore.ko
+	sudo rmmod fstore
 	sudo insmod $<
 	touch $@
 
@@ -25,15 +26,15 @@ ${TEST_BLD}: build/% : test/%.cpp
 	${CXX} -O3 -I${KBUILD}/usr/include/ -std=gnu++2b $^ -o $@
 
 test: /tmp/deploy ${TEST_BLD}
-	$(foreach path,${TEST_BLD}, echo "$(path)" && ${SUDO} $(path))
+	@$(foreach path,${TEST_BLD}, printf "$(shell basename $(path)) ... "; ${SUDO} $(path) && printf "pass\n" || printf "fail\n";)
 
 echo:
-	echo ${TEST_BLD}
-	echo ${TEST_SRC}
-	echo ${KBUILD}
-	echo ${KERNEL}
-	echo ${MODULE}
-	echo ${SUDO}
+	@echo TEST_BLD ${TEST_BLD}
+	@echo TEST_SRC ${TEST_SRC}
+	@echo KBUILD ${KBUILD}
+	@echo KERNEL ${KERNEL}
+	@echo MODULE ${MODULE}
+	@echo SUDO ${SUDO}
 
 .tmp/fstore_dirs:
 	mkdir -p .tmp
@@ -47,11 +48,14 @@ ${KBUILD}/.config: config/config-6.12.0+
 	+yes ""| ${MAKE} -C ${KERNEL} O=${KBUILD} olddefconfig
 
 ${KBUILD}/vmlinux: ${KBUILD}/.config
+	rm -rf ${KBUILD}/include/linux/atomic
 	+${MAKE} -C ${KBUILD}
-	+${MAKE} -C ${KBUILD} headers_install
+	+${MAKE} -C ${KBUILD} headers_install ARCH=$(shell uname -m)
+	tar -xvf ${KBUILD}/kernel/kheaders_data.tar.xz -C ${KBUILD}
 
 ${MODULE}/lib: ${KBUILD}/vmlinux .tmp/fstore_dirs
 	+${SUDO} ${MAKE} -C ${KBUILD} INSTALL_MOD_PATH=${MODULE} INSTALL_MOD_STRIP=1 modules_install
+	mkdir -p ${MODULE}/lib/modules/6.12.0+/build/
 	${SUDO} touch $@
 
 fstore/fstore.ko: ${KBUILD}/vmlinux ${MODULE}/lib fstore/fstore.c

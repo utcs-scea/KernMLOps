@@ -1,3 +1,4 @@
+import os
 import subprocess
 from dataclasses import dataclass
 from typing import cast
@@ -15,8 +16,8 @@ from kernmlops_config import ConfigBase
 @dataclass(frozen=True)
 class MongoDbConfig(ConfigBase):
   operation_count: int = 1000000
-  readProportion: float = 0.25
-  updateProportion: float = 0.75
+  read_proportion: float = 0.25
+  update_proportion: float = 0.75
 
 
 class MongoDbBenchmark(Benchmark):
@@ -41,6 +42,9 @@ class MongoDbBenchmark(Benchmark):
         self.benchmark_dir = self.generic_config.get_benchmark_dir() / "ycsb"
         self.process: subprocess.Popen | None = None
 
+    def is_configured(self) -> bool:
+        return self.benchmark_dir.is_dir()
+
     def setup(self) -> None:
         if self.process is not None:
             raise BenchmarkRunningError()
@@ -50,25 +54,27 @@ class MongoDbBenchmark(Benchmark):
         if self.process is not None:
             raise BenchmarkRunningError()
 
+        command = [
+            f"{self.benchmark_dir}/ycsb-0.17.0/bin/ycsb",
+            "run",
+            "mongodb",
+            "-s",
+            "-P",
+            f"{self.benchmark_dir}/ycsb-0.17.0/workloads/workloada",
+            "-p",
+            f"operationcount={self.config.operation_count}",
+            "-p",
+            f"mongodb.url=mongodb://{os.environ.get('HOST_IP', 'localhost')}:27017/ycsb",
+            "-p",
+            f"readproportion={self.config.read_proportion}",
+            "-p",
+            f"updateproportion={self.config.update_proportion}",
+            "-p",
+            "mongodb.writeConcern=acknowledged"
+        ]
+
         self.process = subprocess.Popen(
-            [
-                f"{self.benchmark_dir}/ycsb-0.17.0/bin/ycsb",
-                "run",
-                "mongodb",
-                "-s",
-                "-P",
-                f"{self.benchmark_dir}/ycsb-0.17.0/workloads/workloada",
-                "-p",
-                f"operationcount={self.config.operation_count}",
-                "-p",
-                "mongodb.url=mongodb://localhost:27017/ycsb",
-                "-p",
-                f"readproportion={self.config.readProportion}",
-                "-p",
-                f"updateproportion={self.config.updateProportion}",
-                "-p",
-                "mongodb.writeConcern=acknowledged"
-            ],
+            command,
             preexec_fn=demote(),
             stdout=subprocess.DEVNULL,
         )

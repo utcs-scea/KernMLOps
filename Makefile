@@ -168,8 +168,9 @@ docker:
 	@if [ ! -d "${KERNEL_DEV_MODULES_DIR}" ]; then \
 		echo "Kernel dev headers not installed: ${KERNEL_DEV_MODULES_DIR}" && exit 1; \
 	fi
-	@mkdir -p ${BENCHMARK_DIR}
-	@docker --context ${CONTAINER_CONTEXT} run --rm \
+
+	@HOST_IP=$$(python3 -c "import socket; print(socket.gethostbyname(socket.gethostname()))") && \
+	docker --context ${CONTAINER_CONTEXT} run --rm \
 	-v ${SRC_DIR}/:${CONTAINER_SRC_DIR} \
 	-v ${KERNEL_DEV_HEADERS_DIR}/:${KERNEL_DEV_HEADERS_DIR}:ro \
 	-v ${KERNEL_DEV_MODULES_DIR}/:${KERNEL_DEV_MODULES_DIR}:ro \
@@ -179,6 +180,7 @@ docker:
 	-v /sys/kernel/:/sys/kernel \
 	${KERNEL_DEV_SPECIFIC_HEADERS_MOUNT} \
 	${KERNMLOPS_CONTAINER_MOUNTS} \
+	-e HOST_IP="$$HOST_IP" \
 	${KERNMLOPS_CONTAINER_ENV} \
 	${CONTAINER_CPUSET} \
 	--pid=host \
@@ -188,8 +190,6 @@ docker:
 	${IMAGE_NAME}:${VERSION} \
 	${CONTAINER_CMD} || true
 
-# Benchmark Installation commands
-
 install-ycsb:
 	@echo "Installing ycsb..."
 	@source scripts/setup-benchmarks/install_ycsb.sh
@@ -197,6 +197,15 @@ install-ycsb:
 install-mongodb:
 	@echo "Installing mongodb benchmark..."
 	@source scripts/setup-benchmarks/install_mongodb.sh
+
+start-mongodb-server:
+	YCSB_BENCHMARK_NAME="ycsb"
+	BENCHMARK_DIR_NAME="kernmlops-benchmark"
+
+	BENCHMARK_DIR="${BENCHMARK_DIR:-$HOME/$BENCHMARK_DIR_NAME}"
+	YCSB_BENCHMARK_DIR="$BENCHMARK_DIR/$YCSB_BENCHMARK_NAME"
+	@mkdir -p ${BENCHMARK_DIR}
+	@{ sudo mongod --dbpath "$YCSB_BENCHMARK_DIR/mongo_db" --bind_ip_all --fork --logpath /var/log/mongodb.log || echo "MongoDB server already running"; }
 
 # Miscellaneous commands
 clean-docker-images:

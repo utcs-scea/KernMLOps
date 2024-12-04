@@ -41,6 +41,7 @@ make benchmark-gap
 # Run yaml configured data collection inside docker
 make collect
 # Run mongodb benchmark inside docker
+make start-mongodb-server # Starts server if not already running. Does not need to be run if it is already running.
 make docker
 make benchmark-mongodb
 

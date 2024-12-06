@@ -1,6 +1,6 @@
 #ifndef _FSTORE_H_
 #define _FSTORE_H_
-#include <linux/types.h>
+#include <asm-generic/int-ll64.h>
 
 enum fstore_cmd {
 	REGISTER_MAP = 0x0,
@@ -8,7 +8,7 @@ enum fstore_cmd {
 };
 
 struct register_input {
-	u64 map_name;
-	u32 fd;
+	__u64 map_name;
+	__u32 fd;
 };
 #endif // _FSTORE_H_

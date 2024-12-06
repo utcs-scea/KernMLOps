@@ -1,3 +1,4 @@
+#include "../../fstore/fstore.h"
 #include <cassert>
 #include <cerrno>
 #include <cstdint>
@@ -10,11 +11,6 @@
 #include <sys/ioctl.h>
 #include <sys/syscall.h>
 #include <unistd.h>
-
-enum fstore_cmd {
-  REGISTER_MAP = 0x0,
-  UNREGISTER_MAP = 0x1,
-};
 
 std::optional<uint64_t> convert8byteStringHash(char* string) {
   uint64_t hash = 0;
@@ -36,11 +32,6 @@ consteval uint64_t unsafeHashConvert(const char* string) {
   }
   return hash;
 }
-
-struct register_input {
-  uint64_t map_name;
-  uint32_t fd;
-};
 
 int main() {
   union bpf_attr attr = {

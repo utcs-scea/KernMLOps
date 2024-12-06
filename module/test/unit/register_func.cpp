@@ -12,27 +12,6 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 
-std::optional<uint64_t> convert8byteStringHash(char* string) {
-  uint64_t hash = 0;
-  uint8_t i = 0;
-  for (; string[i] != '\0' && i < 8; i++) {
-    hash |= ((uint64_t)string[i]) << (i * 8);
-  }
-  if (string[i] != '\0') {
-    return std::nullopt;
-  }
-  return hash;
-}
-
-consteval uint64_t unsafeHashConvert(const char* string) {
-  uint64_t hash = 0;
-  uint8_t i = 0;
-  for (; string[i] != '\0' && i < 8; i++) {
-    hash |= ((uint64_t)string[i]) << (i * 8);
-  }
-  return hash;
-}
-
 int main() {
   union bpf_attr attr = {
       .map_type = BPF_MAP_TYPE_ARRAY,

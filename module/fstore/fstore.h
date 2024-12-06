@@ -11,4 +11,29 @@ struct register_input {
 	__u64 map_name;
 	__u32 fd;
 };
+
+#ifdef __cplusplus
+#include <optional>
+
+std::optional<__u64> convert8byteStringHash(char* string) {
+	__u64 hash = 0;
+	__u8 i = 0;
+	for (; string[i] != '\0' && i < 8; i++) {
+		hash |= ((__u64)string[i]) << (i * 8);
+	}
+	if (string[i] != '\0') return std::nullopt;
+	return hash;
+}
+
+consteval __u64 unsafeHashConvert(const char* string) {
+	__u64 hash = 0;
+	__u8 i = 0;
+	for (; string[i] != '\0' && i < 8; i++) {
+		hash |= ((__u64)string[i]) << (i * 8);
+	}
+  	return hash;
+}
+
+#endif // __cplusplus
+
 #endif // _FSTORE_H_

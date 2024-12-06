@@ -1,4 +1,3 @@
-#include <asm-generic/unistd.h>
 #include <cassert>
 #include <cerrno>
 #include <cstdint>
@@ -9,6 +8,7 @@
 #include <linux/bpf.h>
 #include <optional>
 #include <sys/ioctl.h>
+#include <sys/syscall.h>
 #include <unistd.h>
 
 enum fstore_cmd {
@@ -50,7 +50,7 @@ int main() {
       .max_entries = 100,
   };
 
-  int ebpf_fd = syscall(321, BPF_MAP_CREATE, &attr, sizeof(attr));
+  int ebpf_fd = syscall(SYS_bpf, BPF_MAP_CREATE, &attr, sizeof(attr));
   if (ebpf_fd < 0) {
     auto err = errno;
     std::cerr << "Failed to create map: " << err << ", " << std::strerror(err) << std::endl;

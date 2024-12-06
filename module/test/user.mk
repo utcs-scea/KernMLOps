@@ -17,9 +17,9 @@ echo:
 ${OUT_DIR}:
 	mkdir -p $@
 
-${FULL_OUT}: ${OUT_DIR}% : %.cpp | ${OUT_DIR}
+${FULL_OUT}: ${OUT_DIR}% : %.cpp ../../fstore/fstore.h | ${OUT_DIR}
 	${CXX} -O3 -I/usr/src/linux-headers-$(shell uname -r)/include/ \
-		-std=gnu++2b $^ -o $@
+		-std=gnu++2b $< -o $@
 
 test: ${FULL_OUT}
 	@$(foreach path,${FULL_OUT}, printf "$(shell basename $(path)) ... "; sudo $(path) && printf "pass\n" || printf "fail\n";)

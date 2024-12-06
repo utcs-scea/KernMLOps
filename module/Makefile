@@ -60,7 +60,7 @@ ${MODULE}/lib: ${KBUILD}/vmlinux ${KHEADS} | ${MODULE}
 	+${SUDO} ${MAKE} -C ${KBUILD} INSTALL_MOD_PATH=${MODULE} INSTALL_MOD_STRIP=1 modules_install
 	${SUDO} touch $@
 
-fstore/fstore.ko: ${KBUILD}/vmlinux ${MODULE}/lib fstore/fstore.c
+fstore/fstore.ko: ${KBUILD}/vmlinux ${MODULE}/lib fstore/fstore.c fstore/fstore.h
 	+${MAKE} -C fstore
 
 clean:

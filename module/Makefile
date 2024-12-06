@@ -49,7 +49,7 @@ ${KBUILD}/.config: config/config-6.12.0+ | ${KBUILD}
 	+yes ""| ${MAKE} -C ${KERNEL} O=${KBUILD} olddefconfig
 
 ${KBUILD}/vmlinux: ${KBUILD}/.config
-	+${MAKE} -C ${KBUILD}
+	+${MAKE} -C ${KBUILD} -j$(shell nproc)
 	touch $@
 
 ${KHEADS}: ${KBUILD}/vmlinux

@@ -1,13 +1,11 @@
 #include "../../fstore/fstore.h"
 #include <cassert>
 #include <cerrno>
-#include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <fcntl.h>
 #include <iostream>
 #include <linux/bpf.h>
-#include <optional>
 #include <sys/ioctl.h>
 #include <sys/syscall.h>
 #include <unistd.h>

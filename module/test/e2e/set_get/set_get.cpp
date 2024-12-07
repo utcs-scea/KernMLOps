@@ -52,8 +52,8 @@ int main() {
   __u64 sample_value = SAMPLE_VALUE;
 
   attr.map_fd = ebpf_fd;
-  attr.key = ptr_to_u64(&zero_key);
-  attr.value = ptr_to_u64(&sample_value);
+  attr.key = (__u64)&zero_key;
+  attr.value = (__u64)&sample_value;
   attr.flags = BPF_EXIST;
 
   err = syscall(SYS_bpf, BPF_MAP_UPDATE_ELEM, &attr, sizeof(attr));

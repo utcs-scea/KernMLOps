@@ -43,13 +43,15 @@ In the case with this menu:
 Something like:
 `GRUB_DEFAULT="Advanced options for Ubuntu>Ubuntu, with Linux 4.14.31-041431-generic"`
 
-Then the following is sufficient to ensure things work:
+### Booting Into the New Kernel
 
-Where `"1>0"` is the short string corresponding to the kernel you want to boot into.
+Then the following will help boot into the new kernel after the installation.
 
 ```shell
 sudo grub-reboot "1>0" && sudo reboot
 ```
+
+Where `"1>0"` is the short string corresponding to the kernel you want to boot into.
 
 ## Build and Deploy Kernel
 

@@ -9,14 +9,71 @@
 #include <linux/device.h>
 #include <linux/kdev_t.h>
 #include <linux/hashtable.h>
-#include <linux/types.h>
 #include "../../../fstore/fstore.h"
+#include "set_get.h"
 
-#define NAME "set_get"
 
 dev_t dev = 0;
 static struct class *dev_class;
 static struct cdev set_get_cdev;
+
+static long get_set_ioctl(struct file *file,
+				unsigned int cmd,
+				unsigned long data);
+
+static struct file_operations fops = {
+	.owner = THIS_MODULE,
+	.read = NULL,
+	.write = NULL,
+	.open = NULL,
+	.unlocked_ioctl = get_set_ioctl,
+	.release = NULL,
+};
+
+static long get_set_ioctl(struct file* file,
+		unsigned int cmd,
+		unsigned long data);
+
+int fstore_get(u64 map_name,
+		void* key,
+		size_t key_size,
+		void* value,
+		size_t value_size);
+
+typedef struct get_set_args gsa_t;
+
+static long get_set_ioctl(struct file* file,
+				unsigned int cmd,
+				unsigned long data)
+{
+	int err = -EINVAL;
+	gsa_t* uptr = (gsa_t*) data;
+	gsa_t gsa;
+	switch (cmd) {
+	case GET_ONE:
+		if( copy_from_user(&gsa, (gsa_t*) data, sizeof(gsa_t)) )
+		{
+			pr_err("Getting initial struct impossible\n");
+			err = -EINVAL;
+			break;
+		}
+		err = fstore_get(gsa.map_name,
+				&gsa.key, sizeof(gsa.key),
+				&gsa.value, sizeof(gsa.value));
+		if(err == 0) {
+			if( copy_to_user(&uptr->value,
+					&(gsa.value),
+					sizeof(gsa.value)) ) {
+				pr_err("Returning was thwarted\n");
+				err = -EINVAL;
+			}
+		}
+	default:
+		break;
+	}
+
+	return err;
+}
 
 int __init init_module(void)
 {
@@ -29,10 +86,10 @@ int __init init_module(void)
 	pr_info("Major = %d Minor = %d \n",MAJOR(dev), MINOR(dev));
 
 	/*Creating cdev structure*/
-	cdev_init(&fstore_cdev,&fops);
+	cdev_init(&set_get_cdev, &fops);
 
 	/*Adding character device to the system*/
-	if((cdev_add(&fstore_cdev,dev,1)) < 0){
+	if((cdev_add(&set_get_cdev, dev, 1)) < 0){
 		pr_err("Cannot add the device to the system\n");
 		goto r_class;
 	}
@@ -49,7 +106,7 @@ int __init init_module(void)
 		goto r_device;
 	}
 
-	pr_info("Fstore Driver Insert...Done!!!\n");
+	pr_info(NAME " Driver Insert...Done!!!\n");
 	return 0;
 
 r_device:

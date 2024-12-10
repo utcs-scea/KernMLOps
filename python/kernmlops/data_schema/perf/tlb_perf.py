@@ -321,5 +321,3 @@ class DTLBWalkDurationPerfTable(PerfCollectionTable):
 
     def graphs(self) -> list[type[CollectionGraph]]:
         return []
-
-

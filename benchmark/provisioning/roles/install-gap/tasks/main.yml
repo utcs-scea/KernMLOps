@@ -48,8 +48,8 @@
     mode: '0755'
   register: graph_dir
 
-- name: Create Kronecker scale 25 graph
-  ansible.builtin.command: "{{ gap_benchmark_dir }}/converter -g 25 -b {{ gap_benchmark_dir }}/graphs/kron25.sg"
+- name: Create Kronecker scale graph
+  ansible.builtin.command: "{{ gap_benchmark_dir }}/converter -g {{ gap_benchmark_size }} -b {{ gap_benchmark_dir }}/graphs/kron{{ gap_benchmark_size }}.sg"
   args:
-    creates: "{{ gap_benchmark_dir }}/graphs/kron25.sg"
+    creates: "{{ gap_benchmark_dir }}/graphs/kron{{ gap_benchmark_size }}.sg"
   when: graph_dir.changed

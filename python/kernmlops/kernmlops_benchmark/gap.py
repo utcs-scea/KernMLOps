@@ -15,6 +15,7 @@ from kernmlops_config import ConfigBase
 @dataclass(frozen=True)
 class GapBenchmarkConfig(ConfigBase):
   gap_benchmark: Literal["pr"] = "pr"
+  gap_benchmark_size: int = 25
   trials: int = 2
 
 

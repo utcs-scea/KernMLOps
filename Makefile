@@ -127,24 +127,18 @@ load-mongodb:
 		-p recordcount=1000000 \
 		-p mongodb.url=mongodb://localhost:27017/ycsb
 
-
 start-memcached:
-	@echo "Checking memcached server..."
-	@if ! pgrep memcached > /dev/null; then \
-		echo "Starting memcached server..."; \
-		memcached -d -u root & \
-		sleep 5; \
+	@echo "Starting memcached server..."
+	@memcached -d -l 0.0.0.0 -p $(MEMCACHED_PORT) -u root
+	@sleep 2
+	@echo "Verifying memcached is running..."
+	@if pgrep memcached > /dev/null; then \
+		echo "Memcached process found"; \
+		# netstat -nltp | grep $(MEMCACHED_PORT); \
 	else \
-		echo "Memcached is already running"; \
+		echo "Failed to start memcached"; \
+		exit 1; \
 	fi
-
-	@echo "Flushing memcached..."
-	@if command -v memcached-tool > /dev/null; then \
-		memcached-tool localhost:$(MEMCACHED_PORT) flush; \
-	else \
-		printf "flush_all\r\n" | nc -w 1 localhost $(MEMCACHED_PORT); \
-	fi
-
 
 benchmark-memcached:
 	@${MAKE} start-memcached

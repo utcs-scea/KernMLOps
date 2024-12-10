@@ -24,6 +24,10 @@ benchmark_config:
       - /dev/nvme0n1
       - /dev/nvme1n1
       - /dev/nvme2n1
+  memcached:
+    operation_count: 1000000
+    read_proportion: 0.01
+    update_proportion: 0.99
     traces:
       - azure
       - bing_i

@@ -47,7 +47,7 @@ make benchmark-mongodb
 # Run memcached benchmark inside docker
 make docker
 make load-memcached
-make benchmark-mongodb
+make benchmark-memcached
 
 ```
 

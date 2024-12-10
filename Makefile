@@ -58,6 +58,7 @@ INTERACTIVE ?= i
 COLLECTION_BENCHMARK ?= faux
 BENCHMARK_DIR ?= /home/${UNAME}/kernmlops-benchmark
 YCSB_BENCHMARK_DIR ?= ${BENCHMARK_DIR}/ycsb
+MEMCACHED_PORT=11211
 
 # Provisioning variables
 PROVISIONING_USER ?= ${UNAME}
@@ -125,6 +126,39 @@ load-mongodb:
 		-P "$(YCSB_BENCHMARK_DIR)/ycsb-0.17.0/workloads/workloada" \
 		-p recordcount=1000000 \
 		-p mongodb.url=mongodb://localhost:27017/ycsb
+
+
+start-memcached:
+	@echo "Checking memcached server..."
+	@if ! pgrep memcached > /dev/null; then \
+		echo "Starting memcached server..."; \
+		memcached -d -u root & \
+		sleep 5; \
+	else \
+		echo "Memcached is already running"; \
+	fi
+
+	@echo "Flushing memcached..."
+	@if command -v memcached-tool > /dev/null; then \
+		memcached-tool localhost:$(MEMCACHED_PORT) flush; \
+	else \
+		printf "flush_all\r\n" | nc -w 1 localhost $(MEMCACHED_PORT); \
+	fi
+
+
+benchmark-memcached:
+	@${MAKE} start-memcached
+	@python python/kernmlops collect -v \
+		-c ${KERNMLOPS_CONFIG_FILE} \
+		--benchmark memcached
+
+load-memcached:
+	@echo "Loading memcached benchmark"
+	@${MAKE} start-memcached
+	@python $(YCSB_BENCHMARK_DIR)/ycsb-0.17.0/bin/ycsb load memcached -s \
+		-P "$(YCSB_BENCHMARK_DIR)/ycsb-0.17.0/workloads/workloada" \
+		-p recordcount=1000000 \
+        -p memcached.hosts=localhost:$(MEMCACHED_PORT)
 
 benchmark-linux-build:
 	@python python/kernmlops collect -v \

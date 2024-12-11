@@ -16,7 +16,7 @@ DIRS = ${KBUILD} ${MODULE} ${BUILD}
 
 .PHONY: test
 
-all: fstore/fstore.ko
+all: ${MODULE}/lib
 
 /tmp/deploy: fstore/fstore.ko
 	-sudo rmmod fstore
@@ -24,6 +24,7 @@ all: fstore/fstore.ko
 	touch $@
 
 undeploy:
+	+${MAKE} -C test undeploy
 	-sudo rmmod fstore
 	rm -f /tmp/deploy
 
@@ -33,7 +34,10 @@ kdev_test: ${KHEADS} | build
 unit_test: ${KHEADS} /tmp/deploy
 	+${MAKE} ${EXPORT_VARS} -C test unit_test
 
-test: kdev_test unit_test
+e2e_test: ${KHEADS} /tmp/deploy
+	+${MAKE} ${EXPORT_VARS} -C test e2e_test
+
+test: kdev_test unit_test e2e_test
 
 echo:
 	@echo KBUILD ${KBUILD}

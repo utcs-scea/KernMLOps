@@ -15,8 +15,8 @@ from kernmlops_config import ConfigBase
 @dataclass(frozen=True)
 class MemcachedConfig(ConfigBase):
   operation_count: int = 1000000
-  read_proportion: float = 0.01
-  update_proportion: float = 0.99
+  read_proportion: float = 0.99
+  update_proportion: float = 0.01
 
 
 class MemcachedBenchmark(Benchmark):

@@ -51,7 +51,6 @@ class GapBenchmark(Benchmark):
     def setup(self) -> None:
         if self.process is not None:
             raise BenchmarkRunningError()
-        print(self.get_input_file_path())
         if not self.get_input_file_path().is_file():
           create_graph_process = subprocess.Popen([
             str(self.benchmark_dir / "converter"),

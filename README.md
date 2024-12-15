@@ -46,7 +46,7 @@ make load-mongodb # Run this command only the first time you set up the MongoDB 
 make benchmark-mongodb
 # Run memcached benchmark inside docker
 make docker
-make load-memcached
+make load-memcached # Run this command only the first time you set up the Memcached benchmark
 make benchmark-memcached
 
 ```

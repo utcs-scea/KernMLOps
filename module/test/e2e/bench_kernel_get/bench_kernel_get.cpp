@@ -46,6 +46,10 @@ int main(int argc, char** argv) {
       case 'z':
         zero = true;
         break;
+      default:
+        fprintf(stderr, "%s [-n <number>] [-s <map-size>] [-d <data-size> ] [-z]\n", argv[0]);
+        exit(-1);
+        break;
     }
   }
 
@@ -84,13 +88,13 @@ int main(int argc, char** argv) {
 
   bzero(&attr, sizeof(attr));
 
-  __u64 key = 0;
+  __u32 key = 0;
   __u64 sample_value = SAMPLE_VALUE;
   __u64* sample_buffer = (__u64*)malloc(sizeof(char) * data_size);
 
   attr.map_fd = ebpf_fd;
   attr.key = (__u64)&key;
-  attr.value = (__u64)&sample_buffer;
+  attr.value = (__u64)sample_buffer;
   attr.flags = BPF_EXIST;
 
   ShiftXor rand{1, 4, 7, 13};
@@ -125,7 +129,8 @@ int main(int argc, char** argv) {
   // Important this comes after the free
   err = fcntl(STAT_FD, F_GETFD);
   if (err <= 0) {
-    err = dprintf(STAT_FD, "get_iterations: %lld; map_size: %d; value_size: %d; Time(ns): %lld",
+    std::cerr << "Output to stats" << std::endl;
+    err = dprintf(STAT_FD, "get_iterations %lld\tmap_size %d\tvalue_size %d\tTime(ns) %lld\n",
                   number, size, data_size, gsa.number);
     assert(err > 0);
   }

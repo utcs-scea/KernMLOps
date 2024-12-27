@@ -77,16 +77,10 @@ static int bench_get_many(__u64 map_name,
 	if( !data ) {
 		return -ENOMEM;
 	}
-	pr_info("%s:%d: size: %zu\tkey_bound: %zu\n",
-			__FILE__, __LINE__, size, key_bound);
 
 	__u64 start = ktime_get_raw_fast_ns();
 	for(__u64 i = 0; i < times; i++) {
 		__u32 key = simplerand(&rand) % key_bound;
-		if(DEBUG) {
-			pr_info("%s:%d: map_name: %lld key:%u\n",
-					__FILE__, __LINE__, map_name, key);
-		}
 		if( (err = fn(map_name, &key, 4, data, size)) ) {
 			goto cleanup;
 		}

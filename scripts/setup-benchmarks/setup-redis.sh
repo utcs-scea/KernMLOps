@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# Exit on any error
-set -e
-
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-source "${SCRIPT_DIR}/common.sh"
+# Define variables first
+YCSB_BENCHMARK_NAME="ycsb"
+BENCHMARK_DIR_NAME="kernmlops-benchmark"
+BENCHMARK_DIR="${BENCHMARK_DIR:-$HOME/$BENCHMARK_DIR_NAME}"
+YCSB_BENCHMARK_DIR="$BENCHMARK_DIR/$YCSB_BENCHMARK_NAME"
 
 echo "Setting up Redis benchmark..."
 
@@ -25,7 +25,11 @@ fi
 
 # Create Redis data directory
 REDIS_DATA_DIR="${BENCHMARK_DIR}/redis"
-mkdir -p "${REDIS_DATA_DIR}"
+if [ -d "$REDIS_DATA_DIR" ]; then
+    echo "Directory $REDIS_DATA_DIR already exists."
+else
+    mkdir -p "$REDIS_DATA_DIR"
+fi
 
 # Create Redis configuration
 cat > "${REDIS_DATA_DIR}/redis.conf" << EOF
@@ -34,5 +38,10 @@ dir ${REDIS_DATA_DIR}
 maxmemory 82gb
 maxmemory-policy allkeys-lru
 EOF
+
+# Copy YCSB workload configuration for Redis
+YCSB_WORKLOAD_DIR="${YCSB_BENCHMARK_DIR}/ycsb-0.17.0/workloads"
+mkdir -p "${YCSB_WORKLOAD_DIR}"
+cp "scripts/setup-benchmarks/redis-workload.properties" "${YCSB_WORKLOAD_DIR}/workloada-redis"
 
 echo "Redis benchmark setup complete"

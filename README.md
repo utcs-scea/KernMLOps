@@ -25,8 +25,9 @@ bash scripts/setup-benchmarks/setup-gap.sh
 # Installs YCSB (Yahoo! Cloud Serving Benchmark), used by MongoDB benchmark
 make install-ycsb
 
-# Installs MongoDB benchmark
-make setup-mongodb
+
+
+
 
 # Ensure you have installed your kernel's development headers
 # On ubuntu: apt install linux-headers-$(uname -r)
@@ -40,7 +41,9 @@ make docker
 make benchmark-gap
 # Run yaml configured data collection inside docker
 make collect
-# Run mongodb benchmark inside docker
+
+# Run mongodb benchmark
+make setup-mongodb #  Run this command only the first time you set up the MongoDB benchmark
 make docker
 make load-mongodb # Run this command only the first time you set up the MongoDB benchmark
 make benchmark-mongodb
@@ -48,6 +51,12 @@ make benchmark-mongodb
 make docker
 make load-memcached # Run this command only the first time you set up the Memcached benchmark
 make benchmark-memcached
+
+# Run redis/dc-mix benchmark
+make setup-redis #  Run this command only the first time you set up the Redis benchmark
+make docker
+make load-redis
+make benchmark-redis
 
 ```
 

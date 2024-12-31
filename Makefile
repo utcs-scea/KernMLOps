@@ -132,11 +132,10 @@ setup-redis:
 	@echo "Setting up storage for redis benchmark..."
 	@pwd
 	@source scripts/setup-benchmarks/setup-redis.sh
-	@cp scripts/setup-benchmarks/redis-workload.properties ${YCSB_BENCHMARK_DIR}/ycsb-0.17.0/workloads/workloada-redis
 
 
 start-redis:
-	@redis-server "$(REDIS_BENCHMARK_DIR)/redis.conf" --daemonize yes || { echo "Error is expected if server is already running"; true; }
+	@redis-server "/etc/redis/redis.conf" --daemonize yes || { echo "Error is expected if server is already running"; true; }
 
 load-redis:
 	@echo "Loading Redis benchmark"

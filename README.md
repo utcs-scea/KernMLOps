@@ -22,11 +22,15 @@ make docker-image
 # Installs gap benchmark (default)
 bash scripts/setup-benchmarks/setup-gap.sh
 
+# Installs mongodb benchmark
+make setup-mongodb
+
+# Installs redis/dc-mix benchmark
+make setup-redis 
+
+
 # Installs YCSB (Yahoo! Cloud Serving Benchmark), used by MongoDB benchmark
 make install-ycsb
-
-
-
 
 
 # Ensure you have installed your kernel's development headers
@@ -43,7 +47,6 @@ make benchmark-gap
 make collect
 
 # Run mongodb benchmark
-make setup-mongodb #  Run this command only the first time you set up the MongoDB benchmark
 make docker
 make load-mongodb # Run this command only the first time you set up the MongoDB benchmark
 make benchmark-mongodb
@@ -53,7 +56,6 @@ make load-memcached # Run this command only the first time you set up the Memcac
 make benchmark-memcached
 
 # Run redis/dc-mix benchmark
-make setup-redis #  Run this command only the first time you set up the Redis benchmark
 make docker
 make load-redis
 make benchmark-redis

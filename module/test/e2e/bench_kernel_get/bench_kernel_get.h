@@ -5,13 +5,16 @@
 #define NAME "bench_kernel_get"
 
 enum GET_SET_COMMAND {
-	BENCH_GET_MANY,
-	BENCH_GET_NONE,
+	BENCH_GET_MANY = 0x0,
+	BENCH_GET_NONE = 0x1,
+	BENCH_GET_ARRAY = 0x10,
+	BENCH_GET_ZARRAY = 0x3,
 };
 
 struct bench_get_args {
 	__u64 map_name;
 	__u64 number;
+	__u64 data_size;
 };
 
 struct ShiftXor {

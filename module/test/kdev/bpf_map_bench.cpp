@@ -1,0 +1,149 @@
+#include "../../fstore/fstore.h"
+#include "../e2e/bench_kernel_get/bench_kernel_get.h"
+#include <cassert>
+#include <cerrno>
+#include <chrono>
+#include <cstdio>
+#include <cstring>
+#include <fcntl.h>
+#include <iostream>
+#include <linux/bpf.h>
+#include <sys/ioctl.h>
+#include <sys/syscall.h>
+#include <unistd.h>
+
+#define ASSERT_ERRNO(x)                                                            \
+  if (!(x)) {                                                                      \
+    int err_errno = errno;                                                         \
+    fprintf(stderr, "%s:%d: errno:%s\n", __FILE__, __LINE__, strerror(err_errno)); \
+    exit(-err_errno);                                                              \
+  }
+
+constexpr __u64 SAMPLE_VALUE = 0xDEADBEEF;
+constexpr __u64 DEFAULT_NUMBER = 10;
+constexpr __u32 DEFAULT_SIZE = 10;
+constexpr __u32 DEFAULT_DATA_SIZE = 8;
+constexpr int STAT_FD = 3;
+constexpr int RET_FD = 4;
+
+typedef int (*sys_fn)(int, int, union bpf_attr*, unsigned int);
+
+int zero_sys(int, int, union bpf_attr* attr, unsigned int) {
+  std::memcpy((void*)(attr->value), (void*)(attr->key), 4);
+  return 0;
+}
+
+int bpf_sys(int sys_num, int cmd, union bpf_attr* attr, unsigned int size) {
+  return syscall(sys_num, cmd, attr, size);
+}
+
+int main(int argc, char** argv) {
+  __u64 number = DEFAULT_NUMBER;
+  __u32 size = DEFAULT_SIZE;
+  __u32 data_size = 0;
+  int zero = false;
+
+  int c;
+  while ((c = getopt(argc, argv, "n:s:d:z")) != -1) {
+    switch (c) {
+      case 'n':
+        number = strtoll(optarg, NULL, 10);
+        break;
+      case 's':
+        size = strtol(optarg, NULL, 10);
+        break;
+      case 'd':
+        data_size = strtol(optarg, NULL, 10);
+        break;
+      case 'z':
+        zero = true;
+        break;
+      default:
+        fprintf(stderr, "%s [-n <number>] [-s <map-size>] [-d <data-size> ] [-z]\n", argv[0]);
+        exit(-1);
+        break;
+    }
+  }
+
+  // Resize
+  data_size = data_size < DEFAULT_DATA_SIZE ? DEFAULT_DATA_SIZE : data_size;
+  data_size = data_size / DEFAULT_DATA_SIZE * DEFAULT_DATA_SIZE;
+
+  union bpf_attr attr = {
+      .map_type = BPF_MAP_TYPE_ARRAY,
+      .key_size = 4,
+      .value_size = data_size,
+      .max_entries = size,
+  };
+
+  int ebpf_fd = syscall(SYS_bpf, BPF_MAP_CREATE, &attr, sizeof(attr));
+  if (ebpf_fd < 0) {
+    auto err = errno;
+    std::cerr << "Failed to create map: " << err << ", " << std::strerror(err) << std::endl;
+    return ebpf_fd;
+  }
+
+  bzero(&attr, sizeof(attr));
+
+  int err = 0;
+  __u32 key = 0;
+  __u64* sample_buffer = (__u64*)malloc(sizeof(char) * data_size);
+
+  attr.map_fd = ebpf_fd;
+  attr.key = (__u64)&key;
+  attr.value = (__u64)sample_buffer;
+  attr.flags = BPF_EXIST;
+
+  ShiftXor rand{1, 4, 7, 13};
+
+  for (__u64 i = 0; i < size; i++) {
+    key = i;
+    for (size_t i = 0; i < data_size / 8; i++) {
+      sample_buffer[i] = simplerand(&rand);
+    }
+    err = syscall(SYS_bpf, BPF_MAP_UPDATE_ELEM, &attr, sizeof(attr));
+    ASSERT_ERRNO(err == 0);
+  }
+
+  // Clear flags or EINVAL
+  attr.flags = 0;
+
+  rand = {1, 4, 7, 13};
+
+  __u32 returner = 0;
+  auto f = [&returner, number, size, &rand, &attr, &key](sys_fn fn) {
+    int err = 0;
+    for (__u64 i = 0; i < number; i++) {
+      key = simplerand(&rand) % size;
+      err = fn(SYS_bpf, BPF_MAP_LOOKUP_ELEM, &attr, sizeof(attr));
+      ASSERT_ERRNO(err == 0);
+      returner ^= *((__u32*)attr.value);
+    }
+  };
+
+  const auto start = std::chrono::steady_clock::now();
+  if (zero) {
+    f(zero_sys);
+  } else {
+    f(bpf_sys);
+  }
+  const auto stop = std::chrono::steady_clock::now();
+  auto time = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count();
+
+  close(ebpf_fd);
+
+  err = fcntl(STAT_FD, F_GETFD);
+  if (err != -1) {
+    std::cerr << "Output to stats" << std::endl;
+    err = dprintf(STAT_FD, "get_iterations %lld\tmap_size %d\tvalue_size %d\tTime(ns) %ld\n",
+                  number, size, data_size, time);
+    assert(err > 0);
+  }
+
+  err = fcntl(RET_FD, F_GETFD);
+  if (err != -1) {
+    std::cerr << "Output to returner" << std::endl;
+    err = dprintf(STAT_FD, "returner %d", returner);
+    assert(err > 0);
+  }
+}

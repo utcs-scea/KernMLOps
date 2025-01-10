@@ -34,7 +34,7 @@ echo:
 ${OUT_DIR}:
 	mkdir -p $@
 
-${OUT_DIR}/${KERNEL_MOD_OUT}: ${OUT_DIR}/%.ko : %.c ../../../fstore/fstore.h | ${OUT_DIR}
+${OUT_DIR}/${KERNEL_MOD_OUT}: ${OUT_DIR}/%.ko : %.c ../../../fstore/fstore.h %.h | ${OUT_DIR}
 	+${MAKE} KBUILD_EXTRA_SYMBOLS=${KBUILD_EXTRA_SYMBOLS} -C ${KBUILD} M=${ROOT_DIR} modules
 	cp $*.ko ${OUT_DIR}/${KERNEL_MOD_OUT}
 	+${MAKE} -C . clean
@@ -48,13 +48,13 @@ undeploy:
 	-sudo rmmod ${KERNEL_MOD_NAME}
 	-rm ${TMP_KERNEL_MOD_OUT}
 
-${FULL_OUT}: ${OUT_DIR}/% : %.cpp ../../../fstore/fstore.h | ${OUT_DIR}
+${FULL_OUT}: ${OUT_DIR}/% : %.cpp ../../../fstore/fstore.h %.h | ${OUT_DIR}
 	${CXX} -O3 -I/usr/src/linux-headers-$(shell uname -r)/include/ \
 		-std=gnu++2b $< -o $@
 
 test: ${TMP_KERNEL_MOD_OUT} ${FULL_OUT}
 	@$(foreach path,${FULL_OUT}, printf "$(shell basename $(path)) ... "; \
-		sudo $(path) && printf "pass\n" || printf "fail\n";)
+		sudo $(path) -f -a && printf "pass\n" || printf "fail\n";)
 
 clean:
 	+${MAKE} -C ${KBUILD} M=${ROOT_DIR} MO=${OUT_DIR} clean

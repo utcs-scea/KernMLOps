@@ -16,7 +16,7 @@
   if (!(x)) {                                                                      \
     int err_errno = errno;                                                         \
     fprintf(stderr, "%s:%d: errno:%s\n", __FILE__, __LINE__, strerror(err_errno)); \
-    exit(-err_errno);                                                              \
+    std::exit(-err_errno);                                                         \
   }
 
 constexpr __u64 SAMPLE_VALUE = 0xDEADBEEF;
@@ -25,38 +25,17 @@ constexpr __u32 DEFAULT_SIZE = 10;
 constexpr __u32 DEFAULT_DATA_SIZE = 8;
 constexpr int STAT_FD = 3;
 
-int main(int argc, char** argv) {
-  __u64 number = DEFAULT_NUMBER;
-  __u32 size = DEFAULT_SIZE;
-  __u32 data_size = 0;
-  int zero = false;
-
-  int c;
-  while ((c = getopt(argc, argv, "n:s:d:z")) != -1) {
-    switch (c) {
-      case 'n':
-        number = strtoll(optarg, NULL, 10);
-        break;
-      case 's':
-        size = strtol(optarg, NULL, 10);
-        break;
-      case 'd':
-        data_size = strtol(optarg, NULL, 10);
-        break;
-      case 'z':
-        zero = true;
-        break;
-      default:
-        fprintf(stderr, "%s [-n <number>] [-s <map-size>] [-d <data-size> ] [-z]\n", argv[0]);
-        exit(-1);
-        break;
-    }
+int bpf_create_map(union bpf_attr& attr) {
+  int ebpf_fd = syscall(SYS_bpf, BPF_MAP_CREATE, &attr, sizeof(attr));
+  if (ebpf_fd < 0) {
+    auto err = errno;
+    std::cerr << "Failed to create map: " << err << ", " << std::strerror(err) << std::endl;
+    std::exit(ebpf_fd);
   }
+  return ebpf_fd;
+}
 
-  // Resize
-  data_size = data_size < DEFAULT_DATA_SIZE ? DEFAULT_DATA_SIZE : data_size;
-  data_size = data_size / DEFAULT_DATA_SIZE * DEFAULT_DATA_SIZE;
-
+__u64 benchmark_fstore(int benchmark_fd, __u32 data_size, __u32 size, __u64 number, int zero) {
   union bpf_attr attr = {
       .map_type = BPF_MAP_TYPE_ARRAY,
       .key_size = 4,
@@ -64,23 +43,14 @@ int main(int argc, char** argv) {
       .max_entries = size,
   };
 
-  int ebpf_fd = syscall(SYS_bpf, BPF_MAP_CREATE, &attr, sizeof(attr));
-  if (ebpf_fd < 0) {
-    auto err = errno;
-    std::cerr << "Failed to create map: " << err << ", " << std::strerror(err) << std::endl;
-    return ebpf_fd;
-  }
+  int ebpf_fd = bpf_create_map(attr);
 
   register_input reg = {
       .map_name = unsafeHashConvert("benchget"),
       .fd = 0,
   };
   int fd = open("/dev/fstore_device", O_RDWR);
-  if (fd < 0) {
-    auto err = errno;
-    std::cerr << "Failed to open fstore: " << err << ", " << std::strerror(err) << std::endl;
-    return -EBADF;
-  }
+  ASSERT_ERRNO(fd >= 0);
 
   reg.fd = ebpf_fd;
   int err = ioctl(fd, REGISTER_MAP, (unsigned long)&reg);
@@ -108,30 +78,99 @@ int main(int argc, char** argv) {
     ASSERT_ERRNO(err == 0);
   }
 
-  int gsfd = open("/dev/" NAME "_device", O_RDWR);
-  if (gsfd < 0) {
-    auto err = errno;
-    std::cerr << "Failed to open " NAME ": " << err << ", " << std::strerror(err) << std::endl;
-    return -EBADF;
-  }
-
   bench_get_args gsa = {
       .map_name = unsafeHashConvert("benchget"),
       .number = number,
   };
   GET_SET_COMMAND command = zero ? BENCH_GET_NONE : BENCH_GET_MANY;
-  err = ioctl(gsfd, command, (unsigned long)&gsa);
+  err = ioctl(benchmark_fd, command, (unsigned long)&gsa);
   ASSERT_ERRNO(err == 0);
 
   err = ioctl(fd, UNREGISTER_MAP, unsafeHashConvert("benchget"));
   ASSERT_ERRNO(err == 1);
+  return gsa.number;
+}
+
+__u64 benchmark_array(int benchmark_fd, __u32 data_size, __u32 size, __u64 number, int zero) {
+  bench_get_args gsa = {
+      .map_name = size,
+      .number = number,
+      .data_size = data_size,
+  };
+  GET_SET_COMMAND command = zero ? BENCH_GET_ZARRAY : BENCH_GET_ARRAY;
+  int err = ioctl(benchmark_fd, command, (unsigned long)&gsa);
+  ASSERT_ERRNO(err == 0);
+  return gsa.number;
+}
+
+enum Command : __u32 {
+  NONE = 0x0,
+  FSTORE = 0x1,
+  ARRAY = (0x1 << 1),
+};
+
+int main(int argc, char** argv) {
+  __u64 number = DEFAULT_NUMBER;
+  __u32 size = DEFAULT_SIZE;
+  __u32 data_size = 0;
+  enum Command cmd = NONE;
+  int zero = false;
+  int array = false;
+  int test = false;
+  int err = 0;
+
+  int stats_print = fcntl(STAT_FD, F_GETFD);
+
+  int c;
+  while ((c = getopt(argc, argv, "n:s:d:afz")) != -1) {
+    switch (c) {
+      case 'n':
+        number = strtoull(optarg, NULL, 10);
+        break;
+      case 's':
+        size = strtoul(optarg, NULL, 10);
+        break;
+      case 'd':
+        data_size = strtoul(optarg, NULL, 10);
+        break;
+      case 'a':
+        cmd = (Command)(cmd | ARRAY);
+        break;
+      case 'f':
+        cmd = (Command)(cmd | FSTORE);
+        break;
+      case 'z':
+        zero = true;
+        break;
+      default:
+        fprintf(stderr, "%s [-n <number>] [-s <map-size>] [-d <data-size> ] [-z | -a | -f]\n",
+                argv[0]);
+        exit(-1);
+        break;
+    }
+  }
+
+  // Resize
+  data_size = data_size < DEFAULT_DATA_SIZE ? DEFAULT_DATA_SIZE : data_size;
+  data_size = data_size / DEFAULT_DATA_SIZE * DEFAULT_DATA_SIZE;
+
+  __u64 time_ns = 0;
+
+  int gsfd = open("/dev/" NAME "_device", O_RDWR);
+  ASSERT_ERRNO(gsfd >= 0);
+
+  if (cmd & ARRAY) {
+    time_ns = benchmark_array(gsfd, data_size, size, number, zero);
+  }
+  if (cmd & FSTORE) {
+    time_ns = benchmark_fstore(gsfd, data_size, size, number, zero);
+  }
 
   // Important this comes after the free
-  err = fcntl(STAT_FD, F_GETFD);
-  if (err <= 0) {
+  if (stats_print >= 0) {
     std::cerr << "Output to stats" << std::endl;
     err = dprintf(STAT_FD, "get_iterations %lld\tmap_size %d\tvalue_size %d\tTime(ns) %lld\n",
-                  number, size, data_size, gsa.number);
+                  number, size, data_size, time_ns);
     assert(err > 0);
   }
 

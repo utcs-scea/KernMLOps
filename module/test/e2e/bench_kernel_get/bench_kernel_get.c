@@ -9,6 +9,7 @@
 #include <linux/device.h>
 #include <linux/kdev_t.h>
 #include <linux/hashtable.h>
+#include <linux/vmalloc.h>
 #include "../../../fstore/fstore.h"
 #include "bench_kernel_get.h"
 
@@ -50,23 +51,27 @@ typedef struct ShiftXor shift_xor;
 __u32 returner;
 
 typedef int (*get_fn)(__u64, void*, size_t, void*, size_t);
+typedef int (*value_size_fn)(__u64, size_t*);
+typedef int (*num_keys_fn)(__u64, size_t*);
 
 static int bench_get_many(__u64 map_name,
 		__u64 times,
 		__u64* nanos,
+		value_size_fn value_size,
+		num_keys_fn num_keys,
 		get_fn fn)
 {
 	int err = 0;
 	shift_xor rand = {1, 4, 7, 13};
 	size_t size;
 	size_t key_bound;
-	err = fstore_get_value_size(map_name, &size);
+	err = value_size(map_name, &size);
 	if(err != 0) {
 		pr_err("%s:%d: Getting value size not working\n",
 			__FILE__, __LINE__);
 		return err;
 	}
-	err = fstore_get_num_keys(map_name, &key_bound);
+	err = num_keys(map_name, &key_bound);
 	if( err != 0) {
 		pr_err("%s:%d: Getting number of keys not working\n",
 			__FILE__, __LINE__);
@@ -75,6 +80,7 @@ static int bench_get_many(__u64 map_name,
 
 	void* data = kmalloc(size, GFP_KERNEL);
 	if( !data ) {
+		pr_info("%s:%d Out of memory %lu", __FILE__, __LINE__, size);
 		return -ENOMEM;
 	}
 
@@ -82,6 +88,8 @@ static int bench_get_many(__u64 map_name,
 	for(__u64 i = 0; i < times; i++) {
 		__u32 key = simplerand(&rand) % key_bound;
 		if( (err = fn(map_name, &key, 4, data, size)) ) {
+			pr_err("%s:%d Huge error occurred fn",
+					__FILE__, __LINE__);
 			goto cleanup;
 		}
 		returner ^= ((__u32*) data)[0];
@@ -107,6 +115,42 @@ static int get_none(u64 map_name,
 	return 0;
 }
 
+static int get_value_array(__u64 array, size_t* size) {
+	size_t* ptr = (size_t*) array;
+	*size = ptr[0];
+	return 0;
+}
+
+static int get_size_array(__u64 array, size_t* size) {
+	size_t* ptr = (size_t*) array;
+	*size = ptr[1];
+	return 0;
+}
+
+static int get_array_some(u64 map_name,
+		void* key,
+		size_t key_size,
+		void* value,
+		size_t value_size) {
+	char* ptr = (char*) map_name;
+	u32 index = *((u32*) key);
+
+	void* copy_out = (void*)
+		(ptr + (value_size * index) + (2 * sizeof(size_t)));
+	memcpy(value, copy_out, value_size);
+	return 0;
+}
+
+static int get_array_none(u64 map_name,
+		void* key,
+		size_t key_size,
+		void* value,
+		size_t value_size) {
+	u32 index = *((u32*) key);
+	*((u32*) value) = index;
+	return 0;
+}
+
 
 static long get_set_ioctl(struct file* file,
 				unsigned int cmd,
@@ -115,6 +159,8 @@ static long get_set_ioctl(struct file* file,
 	int err = -EINVAL;
 	gsa_t* uptr = (gsa_t*) data;
 	gsa_t gsa;
+	size_t* array = NULL;
+	size_t alloc_size;
 	if( copy_from_user(&gsa, (gsa_t*) data, sizeof(gsa_t)) )
 	{
 		pr_err("Getting initial struct impossible\n");
@@ -126,24 +172,74 @@ static long get_set_ioctl(struct file* file,
 		err = bench_get_many(gsa.map_name,
 				gsa.number,
 				&gsa.number,
+				fstore_get_value_size,
+				fstore_get_num_keys,
 				get_none);
 		break;
 	case BENCH_GET_MANY:
 		err = bench_get_many(gsa.map_name,
 				gsa.number,
 				&gsa.number,
+				fstore_get_value_size,
+				fstore_get_num_keys,
 				fstore_get);
 		break;
+	case BENCH_GET_ARRAY:
+		alloc_size = 2 * sizeof(size_t)
+			+ gsa.data_size * gsa.map_name;
+		array = vmalloc(alloc_size);
+		if( array == NULL ) {
+			pr_info("%s:%d Out of memory for: %lu\n",
+					__FILE__, __LINE__, alloc_size);
+			err = -ENOMEM;
+			break;
+		}
+		array[0] = (size_t) gsa.data_size;
+		array[1] = (size_t) gsa.map_name;
+
+		err = bench_get_many((u64) array,
+				gsa.number,
+				&gsa.number,
+				get_value_array,
+				get_size_array,
+				get_array_some);
+		break;
+	case BENCH_GET_ZARRAY:
+		alloc_size = 2 * sizeof(size_t)
+			+ gsa.data_size * gsa.map_name;
+		array = vmalloc(alloc_size);
+		if( array == NULL ) {
+			pr_info("%s:%d Out of memory for: %lu\n",
+					__FILE__, __LINE__, alloc_size);
+			err = -ENOMEM;
+			break;
+		}
+		array[0] = (size_t) gsa.data_size;
+		array[1] = (size_t) gsa.map_name;
+
+		err = bench_get_many((u64) array,
+				gsa.number,
+				&gsa.number,
+				get_value_array,
+				get_size_array,
+				get_array_none);
+		break;
 	default:
+		pr_info("%s:%d Invalid Command arrived %u\n",
+				__FILE__, __LINE__, cmd);
+		err = -EINVAL;
 		break;
 	}
+
 	if( err == 0 && copy_to_user(&uptr->number,
 				&(gsa.number),
 				sizeof(__u64)) ) {
-		pr_err("Returning was thwarted\n");
+		pr_err("Copy to User was thwarted\n");
 		err = -EINVAL;
 	}
 
+//cleanup:
+	if( array != NULL ) vfree(array);
 	return err;
 }
 

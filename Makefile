@@ -91,7 +91,7 @@ format:
 # Python commands
 collect:
 	@${MAKE} \
-	-e CONTAINER_CMD="bash -lc 'KERNMLOPS_CONFIG_FILE=${KERNMLOPS_CONFIG_FILE} make collect-data'" \
+	-e CONTAINER_CMD="bash -lc 'KERNMLOPS_CONFIG_FILE=${KERNMLOPS_CONFIG_FILE} make collect-raw'" \
 	docker
 
 collect-raw:

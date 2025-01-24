@@ -26,7 +26,7 @@ bash scripts/setup-benchmarks/setup-gap.sh
 make setup-mongodb
 
 # Installs redis/dc-mix benchmark
-make setup-redis 
+make setup-redis
 
 
 # Installs YCSB (Yahoo! Cloud Serving Benchmark), used by MongoDB benchmark

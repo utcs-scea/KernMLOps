@@ -9,7 +9,7 @@ YCSB_BENCHMARK_DIR="$BENCHMARK_DIR/$YCSB_BENCHMARK_NAME"
 echo "Setting up Redis benchmark..."
 
 # Install Redis server if not already installed
-if ! command -v redis-server &> /dev/null; then
+if ! command -v redis-server &>/dev/null; then
     if [[ "$OSTYPE" == "linux-gnu"* ]]; then
         if [ -f /etc/debian_version ]; then
             sudo apt-get update
@@ -32,7 +32,7 @@ else
 fi
 
 # Create Redis configuration
-cat > "${REDIS_DATA_DIR}/redis.conf" << EOF
+cat >"${REDIS_DATA_DIR}/redis.conf" <<EOF
 port 6379
 dir ${REDIS_DATA_DIR}
 maxmemory 82gb

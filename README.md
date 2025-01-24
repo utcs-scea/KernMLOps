@@ -13,7 +13,7 @@ That submodule is only necessary if you plan to use in-kernel inference.
 Quick Setup:
 
 ```shell
-pip install -r requirements.txt
+pip install --break-system-packages -r requirements.txt
 
 make hooks
 

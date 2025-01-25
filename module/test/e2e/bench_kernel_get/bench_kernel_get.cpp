@@ -35,7 +35,7 @@ int bpf_create_map(union bpf_attr& attr) {
   return ebpf_fd;
 }
 
-__u64 benchmark_fstore(int benchmark_fd, __u32 data_size, __u32 size, __u64 number, int zero) {
+__u64 benchmark_fstore(int benchmark_fd, __u32 data_size, __u32 size, __u64 number) {
   union bpf_attr attr = {
       .map_type = BPF_MAP_TYPE_ARRAY,
       .key_size = 4,
@@ -82,8 +82,7 @@ __u64 benchmark_fstore(int benchmark_fd, __u32 data_size, __u32 size, __u64 numb
       .map_name = unsafeHashConvert("benchget"),
       .number = number,
   };
-  GET_SET_COMMAND command = zero ? BENCH_GET_NONE : BENCH_GET_MANY;
-  err = ioctl(benchmark_fd, command, (unsigned long)&gsa);
+  err = ioctl(benchmark_fd, BENCH_GET_MANY, (unsigned long)&gsa);
   ASSERT_ERRNO(err == 0);
 
   err = ioctl(fd, UNREGISTER_MAP, unsafeHashConvert("benchget"));
@@ -91,14 +90,12 @@ __u64 benchmark_fstore(int benchmark_fd, __u32 data_size, __u32 size, __u64 numb
   return gsa.number;
 }
 
-__u64 benchmark_array(int benchmark_fd, __u32 data_size, __u32 size, __u64 number, int zero) {
+__u64 benchmark_array(int benchmark_fd, __u32 data_size, __u32 size, __u64 number) {
   bench_get_args gsa = {
       .map_name = size,
       .number = number,
-      .data_size = data_size,
   };
-  GET_SET_COMMAND command = zero ? BENCH_GET_ZARRAY : BENCH_GET_ARRAY;
-  int err = ioctl(benchmark_fd, command, (unsigned long)&gsa);
+  int err = ioctl(benchmark_fd, BENCH_GET_ARRAY, (unsigned long)&gsa);
   ASSERT_ERRNO(err == 0);
   return gsa.number;
 }
@@ -114,7 +111,6 @@ int main(int argc, char** argv) {
   __u32 size = DEFAULT_SIZE;
   __u32 data_size = 0;
   enum Command cmd = NONE;
-  int zero = false;
   int array = false;
   int test = false;
   int err = 0;
@@ -122,7 +118,7 @@ int main(int argc, char** argv) {
   int stats_print = fcntl(STAT_FD, F_GETFD);
 
   int c;
-  while ((c = getopt(argc, argv, "n:s:d:afz")) != -1) {
+  while ((c = getopt(argc, argv, "n:s:d:af")) != -1) {
     switch (c) {
       case 'n':
         number = strtoull(optarg, NULL, 10);
@@ -139,12 +135,8 @@ int main(int argc, char** argv) {
       case 'f':
         cmd = (Command)(cmd | FSTORE);
         break;
-      case 'z':
-        zero = true;
-        break;
       default:
-        fprintf(stderr, "%s [-n <number>] [-s <map-size>] [-d <data-size> ] [-z | -a | -f]\n",
-                argv[0]);
+        fprintf(stderr, "%s [-n <number>] [-s <map-size>] [-d <data-size> ] [-a | -f]\n", argv[0]);
         exit(-1);
         break;
     }
@@ -160,10 +152,10 @@ int main(int argc, char** argv) {
   ASSERT_ERRNO(gsfd >= 0);
 
   if (cmd & ARRAY) {
-    time_ns = benchmark_array(gsfd, data_size, size, number, zero);
+    time_ns = benchmark_array(gsfd, data_size, size, number);
   }
   if (cmd & FSTORE) {
-    time_ns = benchmark_fstore(gsfd, data_size, size, number, zero);
+    time_ns = benchmark_fstore(gsfd, data_size, size, number);
   }
 
   // Important this comes after the free

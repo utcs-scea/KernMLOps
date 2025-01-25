@@ -15,6 +15,14 @@
 
 #define DEBUG 1
 
+#ifndef BENCH_GET_DATA_SIZE
+#define BENCH_GET_DATA_SIZE 8
+#endif
+
+#ifndef BENCH_GET_ARRAY_SIZE
+#define BENCH_GET_ARRAY_SIZE 10
+#endif
+
 dev_t dev = 0;
 static struct class *dev_class;
 static struct cdev bench_get_many_cdev;
@@ -50,107 +58,85 @@ typedef struct ShiftXor shift_xor;
 
 __u32 returner;
 
-typedef int (*get_fn)(__u64, void*, size_t, void*, size_t);
-typedef int (*value_size_fn)(__u64, size_t*);
-typedef int (*num_keys_fn)(__u64, size_t*);
+const shift_xor START_RANDOM = {1, 4, 7, 13};
 
-static int bench_get_many(__u64 map_name,
-		__u64 times,
-		__u64* nanos,
-		value_size_fn value_size,
-		num_keys_fn num_keys,
-		get_fn fn)
-{
+typedef struct data {
+	__u32 size[BENCH_GET_DATA_SIZE/4];
+} data_t;
+
+inline void inline_memcpy(void* dest, const void* src, size_t count) {
+	char* tmp = dest;
+	const char *s = src;
+	while(count--) *tmp++ = *s++;
+}
+
+data_t temp_buffer;
+
+static int bench_get_many_array(data_t* buffer, __u64 times, __u64* nanos) {
+	shift_xor rand = START_RANDOM;
+	const size_t map_size = BENCH_GET_ARRAY_SIZE;
+	const size_t data_size = BENCH_GET_DATA_SIZE;
+	for(__u64 i = 0; i < map_size; i++)
+		for(__u64 j = 0; j < data_size/sizeof(__u32); j++)
+			buffer[i].size[j] = simplerand(&rand);
+
+	rand = START_RANDOM;
+	__u32 accumulator = 0;
+	__u64 start = ktime_get_raw_fast_ns();
+	for(__u64 i = 0; i < times; i++) {
+		__u32 key = simplerand(&rand) % map_size;
+		inline_memcpy(&temp_buffer, &buffer[key], data_size);
+		for(__u32 j = 0; j < data_size/sizeof(__u32); j++)
+		{
+			accumulator ^= temp_buffer.size[j];
+		}
+	}
+	__u64 stop = ktime_get_raw_fast_ns();
+	*nanos = stop - start;
+	returner ^= accumulator;
+	return 0;
+}
+
+static int bench_get_many_map(__u64 map_name, __u64 times, __u64* nanos) {
 	int err = 0;
-	shift_xor rand = {1, 4, 7, 13};
 	size_t size;
-	size_t key_bound;
-	err = value_size(map_name, &size);
-	if(err != 0) {
+	err = fstore_get_value_size(map_name, &size);
+	if(err != 0 || size != BENCH_GET_DATA_SIZE) {
 		pr_err("%s:%d: Getting value size not working\n",
 			__FILE__, __LINE__);
 		return err;
 	}
-	err = num_keys(map_name, &key_bound);
-	if( err != 0) {
-		pr_err("%s:%d: Getting number of keys not working\n",
+	err = fstore_get_num_keys(map_name, &size);
+	if(err != 0 || size != BENCH_GET_ARRAY_SIZE) {
+		pr_err("%s:%d: Getting value size not working\n",
 			__FILE__, __LINE__);
 		return err;
 	}
-
-	void* data = kmalloc(size, GFP_KERNEL);
-	if( !data ) {
-		pr_info("%s:%d Out of memory %lu", __FILE__, __LINE__, size);
-		return -ENOMEM;
-	}
-
+	shift_xor rand = START_RANDOM;
+	const size_t map_size = BENCH_GET_ARRAY_SIZE;
+	const size_t data_size = BENCH_GET_DATA_SIZE;
+	__u32 accumulator = 0;
 	__u64 start = ktime_get_raw_fast_ns();
 	for(__u64 i = 0; i < times; i++) {
-		__u32 key = simplerand(&rand) % key_bound;
-		if( (err = fn(map_name, &key, 4, data, size)) ) {
-			pr_err("%s:%d Huge error occurred fn",
+		__u32 key = simplerand(&rand) % map_size;
+		if(( err =
+			fstore_get(map_name,
+				&key, 4, &temp_buffer, data_size) )) {
+			pr_err("%s:%d Huge error occurred fstore_get",
 					__FILE__, __LINE__);
 			goto cleanup;
 		}
-		returner ^= ((__u32*) data)[0];
+		for(__u32 j = 0; j < size/4; j++)
+		{
+			accumulator ^= temp_buffer.size[j];
+		}
 	}
 	__u64 stop = ktime_get_raw_fast_ns();
-
 	*nanos = stop - start;
+	returner ^= accumulator;
 cleanup:
-	kfree(data);
 	return err;
 }
-
-static int get_none(u64 map_name,
-		void* key,
-		size_t key_size,
-		void* value,
-		size_t value_size)
-{
-	if(key_size < 4 && value_size < 4) {
-		return -EINVAL;
-	}
-	((__u32 *)value)[0] = ((__u32 *) key)[0];
-	return 0;
-}
-
-static int get_value_array(__u64 array, size_t* size) {
-	size_t* ptr = (size_t*) array;
-	*size = ptr[0];
-	return 0;
-}
-
-static int get_size_array(__u64 array, size_t* size) {
-	size_t* ptr = (size_t*) array;
-	*size = ptr[1];
-	return 0;
-}
-
-static int get_array_some(u64 map_name,
-		void* key,
-		size_t key_size,
-		void* value,
-		size_t value_size) {
-	char* ptr = (char*) map_name;
-	u32 index = *((u32*) key);
-
-	void* copy_out = (void*)
-		(ptr + (value_size * index) + (2 * sizeof(size_t)));
-	memcpy(value, copy_out, value_size);
-	return 0;
-}
-
-static int get_array_none(u64 map_name,
-		void* key,
-		size_t key_size,
-		void* value,
-		size_t value_size) {
-	u32 index = *((u32*) key);
-	*((u32*) value) = index;
-	return 0;
-}
-
 
 static long get_set_ioctl(struct file* file,
 				unsigned int cmd,
@@ -159,7 +145,7 @@ static long get_set_ioctl(struct file* file,
 	int err = -EINVAL;
 	gsa_t* uptr = (gsa_t*) data;
 	gsa_t gsa;
-	size_t* array = NULL;
+	data_t* array = NULL;
 	size_t alloc_size;
 	if( copy_from_user(&gsa, (gsa_t*) data, sizeof(gsa_t)) )
 	{
@@ -168,25 +154,11 @@ static long get_set_ioctl(struct file* file,
 		return err;
 	}
 	switch (cmd) {
-	case BENCH_GET_NONE:
-		err = bench_get_many(gsa.map_name,
-				gsa.number,
-				&gsa.number,
-				fstore_get_value_size,
-				fstore_get_num_keys,
-				get_none);
-		break;
 	case BENCH_GET_MANY:
-		err = bench_get_many(gsa.map_name,
-				gsa.number,
-				&gsa.number,
-				fstore_get_value_size,
-				fstore_get_num_keys,
-				fstore_get);
+		err = bench_get_many_map(gsa.map_name, gsa.number, &gsa.number);
 		break;
 	case BENCH_GET_ARRAY:
-		alloc_size = 2 * sizeof(size_t)
-			+ gsa.data_size * gsa.map_name;
+		alloc_size = BENCH_GET_ARRAY_SIZE * BENCH_GET_DATA_SIZE;
 		array = vmalloc(alloc_size);
 		if( array == NULL ) {
 			pr_info("%s:%d Out of memory for: %lu\n",
@@ -194,35 +166,7 @@ static long get_set_ioctl(struct file* file,
 			err = -ENOMEM;
 			break;
 		}
-		array[0] = (size_t) gsa.data_size;
-		array[1] = (size_t) gsa.map_name;
-
-		err = bench_get_many((u64) array,
-				gsa.number,
-				&gsa.number,
-				get_value_array,
-				get_size_array,
-				get_array_some);
-		break;
-	case BENCH_GET_ZARRAY:
-		alloc_size = 2 * sizeof(size_t)
-			+ gsa.data_size * gsa.map_name;
-		array = vmalloc(alloc_size);
-		if( array == NULL ) {
-			pr_info("%s:%d Out of memory for: %lu\n",
-					__FILE__, __LINE__, alloc_size);
-			err = -ENOMEM;
-			break;
-		}
-		array[0] = (size_t) gsa.data_size;
-		array[1] = (size_t) gsa.map_name;
-
-		err = bench_get_many((u64) array,
-				gsa.number,
-				&gsa.number,
-				get_value_array,
-				get_size_array,
-				get_array_none);
+		err = bench_get_many_array(array, gsa.number, &gsa.number);
 		break;
 	default:
 		pr_info("%s:%d Invalid Command arrived %u\n",
@@ -238,7 +182,6 @@ static long get_set_ioctl(struct file* file,
 		err = -EINVAL;
 	}
 
-//cleanup:
 	if( array != NULL ) vfree(array);
 	return err;
 }
@@ -246,9 +189,9 @@ static long get_set_ioctl(struct file* file,
 int __init init_module(void)
 {
 	/*Allocating Major number*/
-	if((alloc_chrdev_region(&dev, 0, 1, NAME"_dev")) <0){
-					pr_err("Cannot allocate major number\n");
-					return -1;
+	if((alloc_chrdev_region(&dev, 0, 1, NAME"_dev")) < 0){
+		pr_err("Cannot allocate major number\n");
+		return -1;
 	}
 
 	pr_info("Major = %d Minor = %d \n",MAJOR(dev), MINOR(dev));

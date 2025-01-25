@@ -18,7 +18,7 @@ ${OUT_DIR}:
 	mkdir -p $@
 
 ${FULL_OUT}: ${OUT_DIR}/% : %.cpp ../../fstore/fstore.h | ${OUT_DIR}
-	${CXX} -O0 -g -I/usr/src/linux-headers-$(shell uname -r)/include/ \
+	${CXX} -O3 -I/usr/src/linux-headers-$(shell uname -r)/include/ \
 		-std=gnu++2b $< -o $@
 
 test: ${FULL_OUT}

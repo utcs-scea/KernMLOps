@@ -9,6 +9,7 @@
 #include <iostream>
 #include <linux/bpf.h>
 #include <sys/ioctl.h>
+#include <sys/mman.h>
 #include <sys/syscall.h>
 #include <unistd.h>
 
@@ -25,26 +26,21 @@ constexpr __u32 DEFAULT_SIZE = 10;
 constexpr __u32 DEFAULT_DATA_SIZE = 8;
 constexpr int STAT_FD = 3;
 constexpr int RET_FD = 4;
+constexpr __u32 MAX = 16384;
 
-typedef int (*sys_fn)(int, int, union bpf_attr*, unsigned int);
+struct data_t {
+  size_t size[MAX / sizeof(__u32)];
+};
 
-int zero_sys(int, int, union bpf_attr* attr, unsigned int) {
-  std::memcpy((void*)(attr->value), (void*)(attr->key), 4);
-  return 0;
-}
-
-int bpf_sys(int sys_num, int cmd, union bpf_attr* attr, unsigned int size) {
-  return syscall(sys_num, cmd, attr, size);
-}
+data_t temp_buffer;
 
 int main(int argc, char** argv) {
   __u64 number = DEFAULT_NUMBER;
   __u32 size = DEFAULT_SIZE;
   __u32 data_size = 0;
-  int zero = false;
 
   int c;
-  while ((c = getopt(argc, argv, "n:s:d:z")) != -1) {
+  while ((c = getopt(argc, argv, "n:s:d:")) != -1) {
     switch (c) {
       case 'n':
         number = strtoll(optarg, NULL, 10);
@@ -55,11 +51,8 @@ int main(int argc, char** argv) {
       case 'd':
         data_size = strtol(optarg, NULL, 10);
         break;
-      case 'z':
-        zero = true;
-        break;
       default:
-        fprintf(stderr, "%s [-n <number>] [-s <map-size>] [-d <data-size> ] [-z]\n", argv[0]);
+        fprintf(stderr, "%s [-n <number>] [-s <map-size>] [-d <data-size> ]\n", argv[0]);
         exit(-1);
         break;
     }
@@ -74,6 +67,7 @@ int main(int argc, char** argv) {
       .key_size = 4,
       .value_size = data_size,
       .max_entries = size,
+      .map_flags = BPF_F_MMAPABLE,
   };
 
   int ebpf_fd = syscall(SYS_bpf, BPF_MAP_CREATE, &attr, sizeof(attr));
@@ -105,30 +99,25 @@ int main(int argc, char** argv) {
     ASSERT_ERRNO(err == 0);
   }
 
-  // Clear flags or EINVAL
-  attr.flags = 0;
+  std::byte* map_ptr =
+      (std::byte*)mmap(NULL, size * data_size, PROT_READ, MAP_SHARED | MAP_POPULATE, ebpf_fd, 0);
+  ASSERT_ERRNO(map_ptr != MAP_FAILED);
 
   rand = {1, 4, 7, 13};
 
   __u32 returner = 0;
-  auto f = [&returner, number, size, &rand, &attr, &key](sys_fn fn) {
-    int err = 0;
-    for (__u64 i = 0; i < number; i++) {
-      key = simplerand(&rand) % size;
-      err = fn(SYS_bpf, BPF_MAP_LOOKUP_ELEM, &attr, sizeof(attr));
-      ASSERT_ERRNO(err == 0);
-      returner ^= *((__u32*)attr.value);
-    }
-  };
-
   const auto start = std::chrono::steady_clock::now();
-  if (zero) {
-    f(zero_sys);
-  } else {
-    f(bpf_sys);
+  for (__u64 i = 0; i < number; i++) {
+    key = simplerand(&rand) % size;
+    memcpy(&temp_buffer, map_ptr + (data_size * size), data_size);
+    for (__u32 j = 0; j < data_size / 4; j++) {
+      returner ^= temp_buffer.size[j];
+    }
   }
   const auto stop = std::chrono::steady_clock::now();
   auto time = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count();
+
+  munmap(map_ptr, size * data_size);
 
   close(ebpf_fd);
 

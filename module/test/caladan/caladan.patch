@@ -1,0 +1,50 @@
+# This patch makes Caladan's kernel module use a configurable shared memory size
+# Hardcoded to 2048 for now
+# just run 
+# pushd ksched; make clean && make; popd; sudo ./scripts/setup_machine.sh
+# to apply the patch
+
+diff --git a/scripts/setup_machine.sh b/scripts/setup_machine.sh
+index 79cb93c..a591e1e 100755
+--- a/scripts/setup_machine.sh
++++ b/scripts/setup_machine.sh
+@@ -16,7 +16,7 @@ fi
+ # set up the ksched module
+ rmmod ksched
+ rm /dev/ksched
+-insmod $(dirname $0)/../ksched/build/ksched.ko
++insmod $(dirname $0)/../ksched/build/ksched.ko shm_size=2097152
+ mknod /dev/ksched c 280 0
+ chmod uga+rwx /dev/ksched
+
+diff --git a/ksched/ksched.c b/ksched/ksched.c
+index 291d5f7..ec4ed22 100644
+--- a/ksched/ksched.c
++++ b/ksched/ksched.c
+@@ -51,7 +51,10 @@ static struct cdev ksched_cdev;
+
+ /* shared memory between the IOKernel and the Linux Kernel */
+ static __read_mostly struct ksched_shm_cpu *shm;
+-#define SHM_SIZE (NR_CPUS * sizeof(struct ksched_shm_cpu))
++/*#define SHM_SIZE (NR_CPUS * sizeof(struct ksched_shm_cpu))*/
++static unsigned long shm_size = NR_CPUS * sizeof(struct ksched_shm_cpu);
++module_param(shm_size, ulong, 0644);
++MODULE_PARM_DESC(shm_size, "Size of shared memory region in bytes");
+
+ struct ksched_percpu {
+ 	unsigned int		last_gen;
+@@ -524,12 +527,12 @@ static int __init ksched_init(void)
+ 	if (ret)
+ 		goto fail_ksched_cdev_add;
+
+-	shm = vmalloc_user(SHM_SIZE);
++	shm = vmalloc_user(shm_size);
+ 	if (!shm) {
+ 		ret = -ENOMEM;
+ 		goto fail_shm;
+ 	}
+-	memset(shm, 0, SHM_SIZE);
++	memset(shm, 0, shm_size);
+
+ 	ret = ksched_cpuidle_hijack();
+ 	if (ret)

@@ -27,6 +27,7 @@ benchmarks: Mapping[str, type[Benchmark]] = {
     MongoDbBenchmark.name(): MongoDbBenchmark,
     LinnosBenchmark.name(): LinnosBenchmark,
     RedisBenchmark.name(): RedisBenchmark
+    MemcachedBenchmark.name(): MemcachedBenchmark,
 
 }
 

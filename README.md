@@ -54,11 +54,11 @@ make benchmark-mongodb
 make docker
 make load-memcached # Run this command only the first time you set up the Memcached benchmark
 make benchmark-memcached
-
 # Run redis/dc-mix benchmark
 make docker
 make load-redis
 make benchmark-redis
+
 
 ```
 

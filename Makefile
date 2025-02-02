@@ -128,6 +128,7 @@ load-mongodb:
 		-p recordcount=1000000 \
 		-p mongodb.url=mongodb://localhost:27017/ycsb
 
+
 setup-redis:
 	@echo "Setting up storage for redis benchmark..."
 	@pwd
@@ -151,6 +152,7 @@ benchmark-redis:
 	@python python/kernmlops collect -v \
 		-c ${KERNMLOPS_CONFIG_FILE} \
 		--benchmark redis
+
 
 start-memcached:
 	@echo "Starting memcached server..."

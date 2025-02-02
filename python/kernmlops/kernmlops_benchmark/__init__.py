@@ -26,9 +26,8 @@ benchmarks: Mapping[str, type[Benchmark]] = {
     GapBenchmark.name(): GapBenchmark,
     MongoDbBenchmark.name(): MongoDbBenchmark,
     LinnosBenchmark.name(): LinnosBenchmark,
-    RedisBenchmark.name(): RedisBenchmark
-    MemcachedBenchmark.name(): MemcachedBenchmark,
-
+    RedisBenchmark.name(): RedisBenchmark,
+    MemcachedBenchmark.name(): MemcachedBenchmark
 }
 
 BenchmarkConfig = make_dataclass(

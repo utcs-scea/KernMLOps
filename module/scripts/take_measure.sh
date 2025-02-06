@@ -11,8 +11,9 @@ for ds in 8 16 32 64 128 256 512; do
         #make -s undeploy
         #make -s test
         #for i in $(seq 1 30); do python3 python/bench_ebpf_space.py -s ${ms} -d ${ds} 3>>ebpf-map-${ds}-${ms}.stats; done
-        for i in $(seq 1 30); do ./build/test/kdev/bpf_map_bench -n 100000 -s ${ms} -d ${ds} 3>>user-mmap-${ds}-${ms}.stats; done
+        # for i in $(seq 1 30); do ./build/test/kdev/bpf_map_bench -n 100000 -s ${ms} -d ${ds} 3>>user-mmap-${ds}-${ms}.stats; done
         #for i in `seq 1 30`; do ./build/test/e2e/bench_kernel_get/bench_kernel_get -f -n 100000 -s ${ms} -d ${ds} 3>> kmod-map-${ds}-${ms}.stats; done
         #for i in `seq 1 30`; do ./build/test/e2e/bench_kernel_get/bench_kernel_get -a -n 100000 -s ${ms} -d ${ds} 3>> kmod-array-${ds}-${ms}.stats; done
+        for i in `seq 1 30`; do ./test/caladan/ksched_user -n 100000 -s ${ms} -d ${ds} 3>> ksched-user-${ds}-${ms}.stats 4>> returner; done
     done
 done

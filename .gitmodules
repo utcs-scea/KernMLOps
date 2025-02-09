@@ -2,3 +2,6 @@
 	path = external/linux
 	url = git@github.com:utcs-scea/linux.git
 	branch = kernmlops
+[submodule "module/caladan"]
+	path = module/caladan
+	url = https://github.com/shenango/caladan.git

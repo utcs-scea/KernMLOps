@@ -57,9 +57,17 @@ class MongoDbBenchmark(Benchmark):
         if self.process is not None:
             raise BenchmarkRunningError()
 
+        print(f'Benchmark dir path: {self.benchmark_dir}')
         self.process = subprocess.Popen(
             [
-                f"{self.benchmark_dir}/YCSB/bin/ycsb",
+                f"{self.benchmark_dir}/ycsb-0.17.0/bin/ycsb load mongodb -s",
+                "-p",
+                f"{self.benchmark_dir}/ycsb-0.17.0/workloads/workloada",
+                "-p",
+                "recordcount=1000000",
+                "-p",
+                "mongodb.url=mongodb://localhost:27017/ycsb",
+                f"{self.benchmark_dir}/ycsb-0.17.0/bin/ycsb",
                 "run",
                 "mongodb",
                 "-s",

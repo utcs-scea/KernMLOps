@@ -57,8 +57,6 @@ class MongoDbBenchmark(Benchmark):
         if self.process is not None:
             raise BenchmarkRunningError()
 
-        print(f'Benchmark dir path: {self.benchmark_dir}')
-
         # First load the data
         load_cmd = [
             f"{self.benchmark_dir}/YCSB/bin/ycsb",

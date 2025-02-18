@@ -57,37 +57,62 @@ class MongoDbBenchmark(Benchmark):
         if self.process is not None:
             raise BenchmarkRunningError()
 
-        self.process = subprocess.Popen(
-            [
-                f"{self.benchmark_dir}/YCSB/bin/ycsb",
-                "run",
-                "mongodb",
-                "-s",
-                "-P",
-                f"{self.benchmark_dir}/YCSB/workloads/workloada",
-                "-p",
-                f"operationcount={self.config.operation_count}",
-                "-p",
-                "mongodb.url=mongodb://localhost:27017/ycsb",
-                "-p",
-                f"readproportion={self.config.read_proportion}",
-                "-p",
-                f"updateproportion={self.config.update_proportion}",
-                "-p",
-                f"insertproportion={self.config.insert_proportion}",
-                "-p",
-                f"readmodifywriteproportion={self.config.rmw_proportion}",
-                "-p",
-                f"scanproportion={self.config.scan_proportion}",
-                "-p",
-                f"deleteproportion={self.config.delete_proportion}",
-                "-p",
-                "recordcount=1000000",
-                "-p",
-                "mongodb.writeConcern=acknowledged"
-            ],
+        # First load the data
+        load_cmd = [
+            f"{self.benchmark_dir}/YCSB/bin/ycsb",
+            "load",
+            "mongodb",
+            "-s",
+            "-P",
+            f"{self.benchmark_dir}/YCSB/workloads/workloada",
+            "-p",
+            "recordcount=1000000",
+            "-p",
+            "mongodb.url=mongodb://localhost:27017/ycsb"
+        ]
+
+        # Run the load process first
+        load_process = subprocess.Popen(
+            load_cmd,
             preexec_fn=demote(),
-            stdout=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL
+        )
+        load_process.wait()  # Wait for load to complete before running
+
+        # Then run the benchmark
+        run_cmd = [
+            f"{self.benchmark_dir}/YCSB/bin/ycsb",
+            "run",
+            "mongodb",
+            "-s",
+            "-P",
+            f"{self.benchmark_dir}/YCSB/workloads/workloada",
+            "-p",
+            f"operationcount={self.config.operation_count}",
+            "-p",
+            "mongodb.url=mongodb://localhost:27017/ycsb",
+            "-p",
+            f"readproportion={self.config.read_proportion}",
+            "-p",
+            f"updateproportion={self.config.update_proportion}",
+            "-p",
+            f"insertproportion={self.config.insert_proportion}",
+            "-p",
+            f"readmodifywriteproportion={self.config.rmw_proportion}",
+            "-p",
+            f"scanproportion={self.config.scan_proportion}",
+            "-p",
+            f"deleteproportion={self.config.delete_proportion}",
+            "-p",
+            "recordcount=1000000",
+            "-p",
+            "mongodb.writeConcern=acknowledged"
+        ]
+
+        self.process = subprocess.Popen(
+            run_cmd,
+            preexec_fn=demote(),
+            stdout=subprocess.DEVNULL
         )
 
     def poll(self) -> int | None:

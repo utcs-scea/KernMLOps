@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 import argparse
 import re
@@ -67,6 +67,17 @@ def parse_bar_input(inputf, groups: int):
 
   for line in inputf.readlines():
     broken_line = re.split(r'\s+', line.rstrip())
+    match broken_line:
+        case 'kmod-array':
+            broken_line = 'array kspace'
+        case 'ebpf-map':
+            broken_line = 'ebpf map from ebpf'
+        case 'kmod-map':
+            broken_line = 'ebpf map from kspace'
+        case 'user-mmap':
+            broken_line = 'mmaped ebpf map from userspace'
+        case 'user-ksched':
+            broken_line = 'caladan'
     if verbose:
         print(broken_line)
     if groups > 1 and group_label == []:
